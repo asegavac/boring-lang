@@ -1,5 +1,7 @@
 # Boring Lang
 
+**NOTE: This repo is a work in progress as I learn compiler writing, I may abandon this.**
+
 The Boring Programming Language (Boring-Lang) is an attempt to create an easy, productive, general purpose programming language that makes as few interesting choices as possible while still being in line with modern concepts in programming languages.
 
 The language:
@@ -34,7 +36,7 @@ async func handle(req http.Request, resp http.Response) {
 
 async func main(args: Array<Str>) int {
     router := http.Router("").add_route("/myroute", handle)
-    http_server := http.Server("localhost", 8080)
+    http_server := http.Server("localhost", 8080, router)
     err := await http_server.server_forever()
     await log.info("error serving: ", err)
     return 1
