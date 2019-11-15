@@ -88,7 +88,9 @@ Context is an exceptionally useful feature in golang, but a common complaint is 
 The boring standard library solves this by using parametric polymorphism. Context is by default an empty object passed through the chain, and each function/set of context parameters is an additional trait condition applied at compile time.
 
 ```
-pub func tracing_middleware<Ctx: Tracing>(handler: func(http.Request, mut http.Response)){
+type HTTPRequest<Ctx: Context> = async func(Ctx, http.Request, mut http.Response)
+
+pub func tracing_middleware<Ctx: Tracing>(handler: HTTPRequest<Ctx>){
   return async func(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     with tracing.NewSpan(ctx, 'request_duration') {
       await handler(ctx, req, resp)
@@ -96,7 +98,7 @@ pub func tracing_middleware<Ctx: Tracing>(handler: func(http.Request, mut http.R
   }
 }
 
-pub func auth_middleware<Ctx: Auth>(handler: func(http.Request, mut http.Response), scope: Str){
+pub func auth_middleware<Ctx: Auth>(handler: HTTPRequest<Ctx>, scope: Str){
   return async func(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if ctx.has_scope(scope) {
       await handler(ctx, req, resp)
@@ -106,7 +108,7 @@ pub func auth_middleware<Ctx: Auth>(handler: func(http.Request, mut http.Respons
   }
 }
 
-pub func cancel_middleware<Ctx: Cancel>(handler: func(http.Request, mut http.Response)){
+pub func cancel_middleware<Ctx: Cancel>(handler: HTTPRequest<Ctx>){
   return async func(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if !(await ctx.is_cancelled()) { // check cancel token
       await handler(ctx, req, resp)
