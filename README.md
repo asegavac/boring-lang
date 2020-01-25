@@ -137,6 +137,97 @@ Similar to python, folders/files represent the `.` seperated import path, but re
 import package.path as local_name
 
 pub struct MyStruct {
-  id: Int
+  id: Int32
 }
+```
+
+
+## Basic Statements
+### `if`
+
+`if` is an expression in boring-lang, with the last expression in a block being the return value. If the block ends in a statement rather than an expression, Optional None is returned.
+
+```
+let a = if true {
+  4
+} else {
+  2
+}
+
+// a == 4
+
+let b = if false {
+  2
+}
+
+// b is an Optional<Int32> with value None.
+```
+
+Conditions do not require parenthesis and *must* evaluate to the Boolean type.
+
+### Loops
+
+Boring-lang supports `for` and `while` loops, with `for` having an `async` variant. `while` loops require an expression of Boolean type, while `for` loops require an expression that implements the `Iter` or `AIter` traits.
+
+```
+let mut i = 0
+while i < 100 {
+  i = i + 1
+  // do something here
+}
+
+
+for i in range(100) {
+  // do something here
+}
+
+async for result in paginated_list {
+  // do something with result
+}
+```
+
+`continue` and `break` work similar to other languages.
+
+```
+while true {
+  break // do nothing
+}
+
+for i in range(100) {
+  continue // do nothing
+}
+
+```
+
+### `with`
+
+`with` and `async with` blocks are similar to the python statement with the same name. But unlike the python version, `with` blocks are expressions. `with` blocks take in an expression that implements the `With` or `AWith` trait, and execute a block that *may* return a result (non-result returns are assumed success).
+
+```
+// commits on success, aborts on error.
+// transation.aexit may just return an error as a pass-through after aborting,
+// but it may also transform it into another error adding context.
+
+return async with db.transation(ctx) as t {
+    await t.insert(ctx, record) // returns result type
+}
+```
+
+### `return`
+
+`return` statements exit a function early, returning the given value. They are purely optional as the last expression in a function will automatically return its value.
+
+### `match`
+
+`match` expressions provide pattern matching, similar to a `C` switch statement.
+
+```
+let number = 3
+let result = match number {
+  1 => 'foo',
+  3 => 'bar',
+  _ => 'baz',
+}
+
+// result = 'bar'
 ```
