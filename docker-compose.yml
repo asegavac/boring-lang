@@ -1,0 +1,6 @@
+version: "3"
+services:
+  boring:
+    build: .
+    volumes:
+      - .:/code/

@@ -14,7 +14,7 @@ The language (wish list):
 * has a rich standard library (http server, actor model)
 * is immutable by default
 
-It's basically a middle-ground of Rust, Golang, Swift, and Typescript.
+It's basically a middle-ground of Rust, Golang, Swift, Typescript, and Python.
 
 ## Http Server Example
 ```
@@ -30,14 +30,14 @@ struct ExampleResponse {
 
 async func handle(req: http.Request, resp: mut http.Response) {
   log.info("request: ", req.body)
-  let response_data := ExampleResponse{id: 4, name: "Steven", email: "swerbenjagermanjensen@example.com"}
+  let response_data = ExampleResponse{id: 4, name: "Steven", email: "swerbenjagermanjensen@example.com"}
   await resp.set_status(200)
   await resp.write(json.encode<ExampleResponse>(response_data))
 }
 
 async func main(args: Array<Str>) Int32 {
-    let router := http.Router("").add_route("/myroute", handle)
-    http_server := http.Server("localhost", 8080, router)
+    let router = http.Router("").add_route("/myroute", handle)
+    http_server = http.Server("localhost", 8080, router)
     let err := await http_server.server_forever()
     await log.info("error serving: ", err)
     return 1
@@ -231,3 +231,5 @@ let result = match number {
 
 // result = 'bar'
 ```
+
+TODO: yield, lambdas,
