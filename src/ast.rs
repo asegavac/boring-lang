@@ -5,19 +5,19 @@ pub enum Operator {
     Div,
     Plus,
     Minus,
-    Gt,
-    Gte,
-    Lt,
-    Lte,
-    Eq,
-    Mod,
-    Exp,
-    FloorDiv,
+    // Gt,
+    // Gte,
+    // Lt,
+    // Lte,
+    // Eq,
+    // Mod,
+    // Exp,
+    // FloorDiv,
 }
 
 
 pub struct LiteralInt {
-    pub value: i32
+    pub value: i64
 }
 
 // pub struct LiteralString {
@@ -28,9 +28,15 @@ pub struct Identifier {
     pub name: String
 }
 
+pub struct FunctionCall {
+    pub name: Identifier,
+    pub arguments: Vec<Box<Expression>>,
+}
+
 pub enum Expression {
     LiteralInt(LiteralInt),
     // LiteralString(LiteralString),
+    FunctionCall(FunctionCall),
     Identifier(Identifier),
     Op(Box<Expression>, Operator, Box<Expression>),
 }
@@ -58,6 +64,6 @@ pub struct Function {
 // }
 
 
-pub struct Program {
+pub struct Module {
     pub functions: Vec<Function>,
 }

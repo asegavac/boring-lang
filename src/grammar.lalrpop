@@ -6,12 +6,16 @@ grammar;
 
 
 pub LiteralInt: ast::LiteralInt = {
-    r"[0-9]+" => ast::LiteralInt{value: i32::from_str(<>).unwrap()}
+    r"[0-9]+" => ast::LiteralInt{value: i64::from_str(<>).unwrap()}
 };
 
 pub Identifier: ast::Identifier = {
     r"[A-Za-z][A-Za-z0-9_]*" => ast::Identifier{name: <>.to_string()}
 };
+
+pub FunctionCall: ast::FunctionCall = {
+    <i:Identifier> "(" <args:Comma<Expression>> ")" => ast::FunctionCall{name:i, arguments: args}
+}
 
 pub Expression: Box<ast::Expression> = {
     <l:Expression> "+" <r:Factor> => Box::new(ast::Expression::Op(l, ast::Operator::Plus, r)),
@@ -28,6 +32,7 @@ pub Factor: Box<ast::Expression> = {
 pub Term: Box<ast::Expression> = {
     LiteralInt => Box::new(ast::Expression::LiteralInt(<>)),
     Identifier => Box::new(ast::Expression::Identifier(<>)),
+    <FunctionCall> => Box::new(ast::Expression::FunctionCall(<>)),
     "(" <Expression> ")",
 }
 
@@ -44,8 +49,8 @@ pub Function: ast::Function = {
 }
 
 
-pub Program: ast::Program = {
-    <fs:Function*> => ast::Program{functions: fs}
+pub Module: ast::Module = {
+    <fs:Function*> => ast::Module{functions: fs}
 }
 
 

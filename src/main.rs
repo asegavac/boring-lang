@@ -3,8 +3,26 @@ mod ast;
 
 lalrpop_mod!(pub grammar); // synthesized by LALRPOP
 
+mod compiler;
+use inkwell::context::Context;
+
 fn main() {
-    println!("Hello, world!");
+    let module_ast = grammar::ModuleParser::new().parse("
+    fn add(a, b) {
+        a + b
+    }
+    fn subtract(a, b) {
+        a - b
+    }
+    fn main() {
+        add(4, subtract(5, 2))
+    }
+    ").unwrap();
+
+    let context = Context::create();
+    let mut code_gen = compiler::ModuleCodeGen::new(&context, "main".to_string());
+    code_gen.gen_module(module_ast);
+    println!("{}", code_gen.dump());
 }
 
 
@@ -32,6 +50,8 @@ fn grammar() {
     assert!(grammar::FunctionParser::new().parse("fn add(a, b) { a + }").is_err());
     assert!(grammar::FunctionParser::new().parse("fn add(a, b)").is_err());
 
-    assert!(grammar::ProgramParser::new().parse("fn add(a, b) { a + b }").is_ok());
-    assert!(grammar::ProgramParser::new().parse("fn add(a, b) { a + b } fn subtract(a, b) { a - b }").is_ok());
+    assert!(grammar::FunctionCallParser::new().parse("foo(1, 2)").is_ok());
+
+    assert!(grammar::ModuleParser::new().parse("fn add(a, b) { a + b }").is_ok());
+    assert!(grammar::ModuleParser::new().parse("fn add(a, b) { a + b } fn subtract(a, b) { a - b }").is_ok());
 }
