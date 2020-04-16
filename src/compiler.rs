@@ -28,45 +28,45 @@ impl<'ctx> ModuleCodeGen<'ctx> {
         }
     }
 
-    pub fn gen_literal_int(&mut self, literal_int: ast::LiteralInt) -> IntValue<'ctx> {
+    pub fn gen_literal_int(&mut self, literal_int: &ast::LiteralInt) -> IntValue<'ctx> {
         self.context.i64_type().const_int(unsafe { mem::transmute::<i64, u64>(literal_int.value) }, true)
     }
 
-    pub fn gen_op_expression(&mut self, scope: &Scope<'ctx>, lhs: Box<ast::Expression>, op: ast::Operator, rhs: Box<ast::Expression>) -> IntValue<'ctx> {
+    pub fn gen_op_expression(&mut self, scope: &Scope<'ctx>, lhs: &Box<ast::Expression>, op: &ast::Operator, rhs: &Box<ast::Expression>) -> IntValue<'ctx> {
         let lhs_result = self.gen_expression(scope, lhs);
         let rhs_result = self.gen_expression(scope, rhs);
-        self.gen_op_int(lhs_result, rhs_result, op)
+        self.gen_op_int(&lhs_result, &rhs_result, op)
     }
 
-    pub fn gen_op_int(&mut self, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>, op: ast::Operator) -> IntValue<'ctx> {
-        match op {
-            ast::Operator::Plus => self.builder.build_int_add(lhs, rhs, "add"),
-            ast::Operator::Minus => self.builder.build_int_sub(lhs, rhs, "sub"),
-            ast::Operator::Mul => self.builder.build_int_mul(lhs, rhs, "mul"),
-            ast::Operator::Div => self.builder.build_int_signed_div(lhs, rhs, "div"),
+    pub fn gen_op_int(&mut self, lhs: &IntValue<'ctx>, rhs: &IntValue<'ctx>, op: &ast::Operator) -> IntValue<'ctx> {
+        match *op {
+            ast::Operator::Plus => self.builder.build_int_add(*lhs, *rhs, "add"),
+            ast::Operator::Minus => self.builder.build_int_sub(*lhs, *rhs, "sub"),
+            ast::Operator::Mul => self.builder.build_int_mul(*lhs, *rhs, "mul"),
+            ast::Operator::Div => self.builder.build_int_signed_div(*lhs, *rhs, "div"),
         }
     }
 
-    pub fn gen_expression(&mut self, scope: &Scope<'ctx>, expression: Box<ast::Expression>) -> IntValue<'ctx> {
-        match *expression {
-            ast::Expression::LiteralInt(literal_int) => self.gen_literal_int(literal_int),
+    pub fn gen_expression(&mut self, scope: &Scope<'ctx>, expression: &Box<ast::Expression>) -> IntValue<'ctx> {
+        match &**expression {
+            ast::Expression::LiteralInt(literal_int) => self.gen_literal_int(&literal_int),
             ast::Expression::Identifier(identifier) => {
                 match scope[&identifier.name] {
                     BasicValueEnum::IntValue(value) => value,
                     _ => panic!("function returned type other than int, no types yet"),
                 }
             },
-            ast::Expression::FunctionCall(function_call) => self.gen_function_call(scope, function_call),
-            ast::Expression::Op(lhs, op, rhs) => self.gen_op_expression(scope, lhs, op, rhs),
+            ast::Expression::FunctionCall(function_call) => self.gen_function_call(scope, &function_call),
+            ast::Expression::Op(lhs, op, rhs) => self.gen_op_expression(scope, &lhs, &op, &rhs),
         }
     }
 
-    pub fn gen_function_call(&mut self, scope: &Scope<'ctx>, function_call: ast::FunctionCall) -> IntValue<'ctx> {
+    pub fn gen_function_call(&mut self, scope: &Scope<'ctx>, function_call: &ast::FunctionCall) -> IntValue<'ctx> {
         println!("Calling function: {}", &function_call.name.name);
         let fn_value = self.module.get_function(&function_call.name.name).unwrap();
         let mut arguments = Vec::new();
-        for expression in function_call.arguments.into_iter() {
-            arguments.push(BasicValueEnum::IntValue(self.gen_expression(scope, expression)));
+        for expression in (&function_call.arguments).into_iter() {
+            arguments.push(BasicValueEnum::IntValue(self.gen_expression(scope, &expression)));
         }
 
         let result = self.builder.build_call(fn_value, &arguments, &function_call.name.name)
@@ -94,18 +94,18 @@ impl<'ctx> ModuleCodeGen<'ctx> {
         fn_value
     }
 
-    pub fn gen_function(&mut self, function: ast::Function) {
+    pub fn gen_function(&mut self, function: &ast::Function) {
         let fn_value = self.module.get_function(&function.name.name).unwrap();
         let basic_block = self.context.append_basic_block(fn_value, "entry");
 
         self.builder.position_at_end(basic_block);
 
         let mut scope = self.scope.clone();
-        for (i, param) in function.arguments.into_iter().enumerate() {
-            scope.insert(param.name.name, fn_value.get_nth_param(i.try_into().unwrap()).unwrap());
+        for (i, param) in (&function.arguments).into_iter().enumerate() {
+            scope.insert(param.name.name.to_string(), fn_value.get_nth_param(i.try_into().unwrap()).unwrap());
         }
-        let body = function.block;
-        let return_value = self.gen_expression(&scope, body.expression);
+        let body = &function.block;
+        let return_value = self.gen_expression(&scope, &body.expression);
         self.builder.build_return(Some(&return_value));
     }
 
@@ -115,7 +115,7 @@ impl<'ctx> ModuleCodeGen<'ctx> {
             self.gen_signature(&function);
         }
         for function in module.functions {
-            self.gen_function(function);
+            self.gen_function(&function);
         }
     }
 

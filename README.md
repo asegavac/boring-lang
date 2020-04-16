@@ -22,7 +22,7 @@ import net.http as http
 import logging as log
 import json as json
 
-struct ExampleResponse {
+type ExampleResponse struct {
   id: Int32
   name: Str
   email: Str
@@ -38,7 +38,7 @@ async fn handle(req: http.Request, resp: mut http.Response) {
 async fn main(args: Array<Str>) Int32 {
     let router = http.Router("").add_route("/myroute", handle)
     http_server = http.Server("localhost", 8080, router)
-    let err := await http_server.server_forever()
+    let err = await http_server.server_forever()
     await log.info("error serving: ", err)
     return 1
 }
@@ -66,11 +66,11 @@ Methods on a struct must specify if they mutate the struct.
 
 ```
 impl Dict<Key: Hashable, Value> {
-  fn insert(self: mut Dict, key: Key, value: Value) {
+  fn insert(self: mut Self, key: Key, value: Value) {
     // mutate self here
   }
 
-  fn get(self: Dict, key: Key) Optional<Value> {
+  fn get(self: Self, key: Key) Optional<Value> {
     // no need for `mut`
   }
 }
@@ -136,7 +136,7 @@ Similar to python, folders/files represent the `.` seperated import path, but re
 ```
 import package.path as local_name
 
-pub struct MyStruct {
+pub type MyStruct struct {
   id: Int32
 }
 ```
