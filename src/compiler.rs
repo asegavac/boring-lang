@@ -62,7 +62,6 @@ impl<'ctx> ModuleCodeGen<'ctx> {
     }
 
     pub fn gen_function_call(&mut self, scope: &Scope<'ctx>, function_call: &ast::FunctionCall) -> IntValue<'ctx> {
-        println!("Calling function: {}", &function_call.name.name);
         let fn_value = self.module.get_function(&function_call.name.name).unwrap();
         let mut arguments = Vec::new();
         for expression in (&function_call.arguments).into_iter() {
@@ -89,7 +88,6 @@ impl<'ctx> ModuleCodeGen<'ctx> {
             args.push(self.context.i64_type().into());
         }
         let fn_type = self.context.i64_type().fn_type(&args, false);
-        println!("Adding function: {}", &function.name.name);
         let fn_value = self.module.add_function(&function.name.name, fn_type, None);
         fn_value
     }

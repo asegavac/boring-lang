@@ -1,6 +1,6 @@
 [package]
 name = "boring-lang"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["asegavac"]
 edition = "2018"
 
@@ -14,3 +14,4 @@ features = ["lexer"]
 lalrpop-util = "0.18.1"
 regex = "1"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm7-0" }
+clap = "2.33.0"

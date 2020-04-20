@@ -1,0 +1,11 @@
+fn add(a, b) {
+    a + b
+}
+
+fn subtract(a, b) {
+    a - b
+}
+
+fn main() {
+    add(4, subtract(5, 2))
+}
