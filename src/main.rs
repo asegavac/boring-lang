@@ -5,7 +5,7 @@ lalrpop_mod!(pub grammar); // synthesized by LALRPOP
 
 use std::fs;
 use std::io::Write;
-mod compiler;
+// mod compiler;
 use inkwell::context::Context;
 extern crate clap;
 use clap::{Arg, App};
@@ -40,12 +40,12 @@ fn main() {
     let module_ast =  grammar::ModuleParser::new().parse(&contents).unwrap(); //TODO: convert to error
 
 
-    let context = Context::create();
-    let mut code_gen = compiler::ModuleCodeGen::new(&context, "main".to_string());
-    code_gen.gen_module(module_ast);
-
-    let mut f = fs::File::create(output).expect("Unable to create out file");
-    f.write_all(code_gen.dump().as_bytes()).expect("Unable to write data");
+    // let context = Context::create();
+    // let mut code_gen = compiler::ModuleCodeGen::new(&context, "main".to_string());
+    // code_gen.gen_module(module_ast);
+    //
+    // let mut f = fs::File::create(output).expect("Unable to create out file");
+    // f.write_all(code_gen.dump().as_bytes()).expect("Unable to write data");
 }
 
 
@@ -63,18 +63,21 @@ fn grammar() {
     assert!(grammar::ExpressionParser::new().parse("(22 * 33) + 24").is_ok());
 
     assert!(grammar::BlockParser::new().parse("{ (22 * 33) + 24 }").is_ok());
+    assert!(grammar::BlockParser::new().parse("{ (22 * 33) + 24; 24 }").is_ok());
+    // assert!(grammar::BlockParser::new().parse("{ (22 * 33) + 24\n 24 }").is_ok());
     assert!(grammar::BlockParser::new().parse("{ }").is_err());
 
-    assert!(grammar::VariableDeclarationParser::new().parse("foo").is_ok());
+    assert!(grammar::VariableDeclarationParser::new().parse("foo: Int32").is_ok());
+    assert!(grammar::VariableDeclarationParser::new().parse("foo").is_err());
     assert!(grammar::VariableDeclarationParser::new().parse("1234").is_err());
 
-    assert!(grammar::FunctionParser::new().parse("fn add(a, b) { a + b }").is_ok());
-    assert!(grammar::FunctionParser::new().parse("fn random_dice_roll() { 4 }").is_ok());
-    assert!(grammar::FunctionParser::new().parse("fn add(a, b) { a + }").is_err());
-    assert!(grammar::FunctionParser::new().parse("fn add(a, b)").is_err());
+    assert!(grammar::FunctionParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + b }").is_ok());
+    assert!(grammar::FunctionParser::new().parse("fn random_dice_roll() Int32 { 4 }").is_ok());
+    assert!(grammar::FunctionParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + }").is_err());
+    assert!(grammar::FunctionParser::new().parse("fn add(a: Int32, b: Int32) Int32").is_err());
 
     assert!(grammar::FunctionCallParser::new().parse("foo(1, 2)").is_ok());
 
-    assert!(grammar::ModuleParser::new().parse("fn add(a, b) { a + b }").is_ok());
-    assert!(grammar::ModuleParser::new().parse("fn add(a, b) { a + b } fn subtract(a, b) { a - b }").is_ok());
+    assert!(grammar::ModuleParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + b }").is_ok());
+    assert!(grammar::ModuleParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + b } fn subtract(a: Int32, b: Int32) Int32 { a - b }").is_ok());
 }

@@ -32,10 +32,10 @@ impl<'ctx> ModuleCodeGen<'ctx> {
         self.context.i64_type().const_int(unsafe { mem::transmute::<i64, u64>(literal_int.value) }, true)
     }
 
-    pub fn gen_op_expression(&mut self, scope: &Scope<'ctx>, lhs: &Box<ast::Expression>, op: &ast::Operator, rhs: &Box<ast::Expression>) -> IntValue<'ctx> {
-        let lhs_result = self.gen_expression(scope, lhs);
-        let rhs_result = self.gen_expression(scope, rhs);
-        self.gen_op_int(&lhs_result, &rhs_result, op)
+    pub fn gen_op_expression(&mut self, scope: &Scope<'ctx>, operation: &ast::Operation) -> IntValue<'ctx> {
+        let lhs_result = self.gen_expression(scope, &operation.left);
+        let rhs_result = self.gen_expression(scope, &operation.right);
+        self.gen_op_int(&lhs_result, &rhs_result, &operation.op)
     }
 
     pub fn gen_op_int(&mut self, lhs: &IntValue<'ctx>, rhs: &IntValue<'ctx>, op: &ast::Operator) -> IntValue<'ctx> {
@@ -57,7 +57,7 @@ impl<'ctx> ModuleCodeGen<'ctx> {
                 }
             },
             ast::Expression::FunctionCall(function_call) => self.gen_function_call(scope, &function_call),
-            ast::Expression::Op(lhs, op, rhs) => self.gen_op_expression(scope, &lhs, &op, &rhs),
+            ast::Expression::Op(operation) => self.gen_op_expression(scope, &operation),
         }
     }
 

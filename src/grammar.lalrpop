@@ -6,46 +6,62 @@ grammar;
 
 
 pub LiteralInt: ast::LiteralInt = {
-    r"[0-9]+" => ast::LiteralInt{value: i64::from_str(<>).unwrap()}
+    <literal:r"[0-9]+"> => ast::LiteralInt{value: i64::from_str(literal).unwrap()}
 };
 
 pub Identifier: ast::Identifier = {
-    r"[A-Za-z][A-Za-z0-9_]*" => ast::Identifier{name: <>.to_string()}
+    <i:r"[A-Za-z][A-Za-z0-9_]*"> => ast::Identifier{name: i.to_string()}
 };
 
 pub FunctionCall: ast::FunctionCall = {
-    <i:Identifier> "(" <args:Comma<Expression>> ")" => ast::FunctionCall{name:i, arguments: args}
+    <i:Spanned<Identifier>> "(" <args:Comma<Spanned<Expression>>> ")" => ast::FunctionCall{name:i, arguments: args}
 }
 
 pub Expression: Box<ast::Expression> = {
-    <l:Expression> "+" <r:Factor> => Box::new(ast::Expression::Op(l, ast::Operator::Plus, r)),
-    <l:Expression> "-" <r:Factor> => Box::new(ast::Expression::Op(l, ast::Operator::Minus, r)),
+    <l:Spanned<Expression>> "+" <r:Spanned<Factor>> => Box::new(ast::Expression::Op(ast::Operation{left: l, op: ast::Operator::Plus, right: r})),
+    <l:Spanned<Expression>> "-" <r:Spanned<Factor>> => Box::new(ast::Expression::Op(ast::Operation{left: l, op: ast::Operator::Minus, right: r})),
     Factor,
 }
 
 pub Factor: Box<ast::Expression> = {
-    <l:Factor> "*" <r:Term> => Box::new(ast::Expression::Op(l, ast::Operator::Mul, r)),
-    <l:Factor> "/" <r:Term> => Box::new(ast::Expression::Op(l, ast::Operator::Div, r)),
+    <l:Spanned<Factor>> "*" <r:Spanned<Term>> => Box::new(ast::Expression::Op(ast::Operation{left: l, op: ast::Operator::Mul, right: r})),
+    <l:Spanned<Factor>> "/" <r:Spanned<Term>> => Box::new(ast::Expression::Op(ast::Operation{left: l, op: ast::Operator::Div, right: r})),
     Term,
 }
 
 pub Term: Box<ast::Expression> = {
-    LiteralInt => Box::new(ast::Expression::LiteralInt(<>)),
-    Identifier => Box::new(ast::Expression::Identifier(<>)),
-    <FunctionCall> => Box::new(ast::Expression::FunctionCall(<>)),
-    "(" <Expression> ")",
+    Spanned<LiteralInt> => Box::new(ast::Expression::LiteralInt(<>)),
+    Spanned<Identifier> => Box::new(ast::Expression::Identifier(<>)),
+    Spanned<FunctionCall> => Box::new(ast::Expression::FunctionCall(<>)),
+    "(" <e:Expression> ")" => e
+}
+
+pub LetStatement: ast::Assignment = {
+    //TODO: support destructuring with tuples, when they exist.
+    //TODO: add mut, weak
+    "let" <n:Spanned<Identifier>> "=" <e:Spanned<Expression>> => ast::Assignment{name: n, type_usage: None, expression: e},
+    "let" <n:Spanned<Identifier>> ":" <t:Spanned<TypeUsage>> "=" <e:Spanned<Expression>> => ast::Assignment{name: n, type_usage: Some(t), expression: e},
+}
+
+pub Statement: ast::Statement = {
+    <l:Spanned<LetStatement>> => ast::Statement::Assignment(l),
+    <e:Spanned<Expression>> => ast::Statement::Expression(e),
 }
 
 pub Block: ast::Block = {
-    "{" <e:Expression> "}" => ast::Block{expression: e}
+    "{" <s:LineDelimiter<Spanned<Statement>>> "}" => ast::Block{statements: s}
+}
+
+pub TypeUsage: ast::TypeUsage = {
+    <n:Spanned<Identifier>> => ast::TypeUsage{name: n}
 }
 
 pub VariableDeclaration: ast::VariableDeclaration = {
-    Identifier => ast::VariableDeclaration{name: <>}
+    <i:Spanned<Identifier>> ":" <t:Spanned<TypeUsage>> => ast::VariableDeclaration{name: i, type_usage: t},
 }
 
 pub Function: ast::Function = {
-    "fn" <n:Identifier> "(" <args:Comma<VariableDeclaration>> ")" <b:Block> => ast::Function{name: n, arguments: args, block: b}
+    "fn" <n:Spanned<Identifier>> "(" <args:Comma<VariableDeclaration>> ")" <rt:Spanned<TypeUsage>> <b:Block> => ast::Function{name: n, arguments: args, block: b, return_type: rt}
 }
 
 
@@ -65,4 +81,18 @@ Comma<T>: Vec<T> = {
             v
         }
     }
+};
+
+
+LineDelimiter<T>: Vec<T> = {
+    <v:(<T> r"\n|;")*> <e:T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    }
+};
+
+
+Spanned<Rule>: ast::Spanned<Rule> = {
+  <l: @L> <rule: Rule> <r: @R> => ast::Spanned{span: ast::Span{left: l, right: r}, value: rule}
 };
