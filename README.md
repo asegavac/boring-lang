@@ -14,7 +14,7 @@ The language (wish list):
 * has a rich standard library (http server, actor model)
 * is immutable by default
 
-It's basically a middle-ground of Rust, Golang, Swift, and Typescript.
+It's basically a middle-ground of Rust, Golang, Swift, Typescript, and Python.
 
 ## Http Server Example
 ```
@@ -22,23 +22,23 @@ import net.http as http
 import logging as log
 import json as json
 
-struct ExampleResponse {
+type ExampleResponse struct {
   id: Int32
   name: Str
   email: Str
 }
 
-async func handle(req: http.Request, resp: mut http.Response) {
+async fn handle(req: http.Request, resp: mut http.Response) {
   log.info("request: ", req.body)
-  let response_data := ExampleResponse{id: 4, name: "Steven", email: "swerbenjagermanjensen@example.com"}
+  let response_data = ExampleResponse{id: 4, name: "Steven", email: "swerbenjagermanjensen@example.com"}
   await resp.set_status(200)
   await resp.write(json.encode<ExampleResponse>(response_data))
 }
 
-async func main(args: Array<Str>) Int32 {
-    let router := http.Router("").add_route("/myroute", handle)
-    http_server := http.Server("localhost", 8080, router)
-    let err := await http_server.server_forever()
+async fn main(args: Array<Str>) Int32 {
+    let router = http.Router("").add_route("/myroute", handle)
+    http_server = http.Server("localhost", 8080, router)
+    let err = await http_server.server_forever()
     await log.info("error serving: ", err)
     return 1
 }
@@ -66,11 +66,11 @@ Methods on a struct must specify if they mutate the struct.
 
 ```
 impl Dict<Key: Hashable, Value> {
-  func insert(self: mut Dict, key: Key, value: Value) {
+  fn insert(self: mut Self, key: Key, value: Value) {
     // mutate self here
   }
 
-  func get(self: Dict, key: Key) Optional<Value> {
+  fn get(self: Self, key: Key) Optional<Value> {
     // no need for `mut`
   }
 }
@@ -86,18 +86,18 @@ Context is an exceptionally useful feature in golang, but a common complaint is 
 The boring standard library solves this by using parametric polymorphism. Context is by default an empty object passed through the chain, and each function/set of context parameters is an additional trait condition applied at compile time.
 
 ```
-type HTTPRequest<Ctx: Context> = async func(Ctx, http.Request, mut http.Response)
+type HTTPRequest<Ctx: Context> = async fn(Ctx, http.Request, mut http.Response)
 
-pub func tracing_middleware<Ctx: Tracing>(handler: HTTPRequest<Ctx>) HTTPRequest {
-  return async func(ctx: Ctx, req: http.Request, resp: mut http.Response) {
+pub fn tracing_middleware<Ctx: Tracing>(handler: HTTPRequest<Ctx>) HTTPRequest {
+  return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     with tracing.Span(ctx, "request_duration") {
       await handler(ctx, req, resp)
     }
   }
 }
 
-pub func auth_middleware<Ctx: Auth>(handler: HTTPRequest<Ctx>, scope: Str) HTTPRequest {
-  return async func(ctx: Ctx, req: http.Request, resp: mut http.Response) {
+pub fn auth_middleware<Ctx: Auth>(handler: HTTPRequest<Ctx>, scope: Str) HTTPRequest {
+  return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if ctx.has_scope(scope) {
       await handler(ctx, req, resp)
     }
@@ -106,8 +106,8 @@ pub func auth_middleware<Ctx: Auth>(handler: HTTPRequest<Ctx>, scope: Str) HTTPR
   }
 }
 
-pub func cancel_middleware<Ctx: Cancel>(handler: HTTPRequest<Ctx>) HTTPRequest {
-  return async func(ctx: Ctx, req: http.Request, resp: mut http.Response) {
+pub fn cancel_middleware<Ctx: Cancel>(handler: HTTPRequest<Ctx>) HTTPRequest {
+  return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if !(await ctx.is_cancelled()) { // check cancel token
       await handler(ctx, req, resp)
     }
@@ -136,7 +136,7 @@ Similar to python, folders/files represent the `.` seperated import path, but re
 ```
 import package.path as local_name
 
-pub struct MyStruct {
+pub type MyStruct struct {
   id: Int32
 }
 ```
@@ -231,3 +231,5 @@ let result = match number {
 
 // result = 'bar'
 ```
+
+TODO: yield, lambdas,

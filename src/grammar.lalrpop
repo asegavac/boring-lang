@@ -1,0 +1,68 @@
+use std::str::FromStr;
+use crate::ast;
+
+
+grammar;
+
+
+pub LiteralInt: ast::LiteralInt = {
+    r"[0-9]+" => ast::LiteralInt{value: i64::from_str(<>).unwrap()}
+};
+
+pub Identifier: ast::Identifier = {
+    r"[A-Za-z][A-Za-z0-9_]*" => ast::Identifier{name: <>.to_string()}
+};
+
+pub FunctionCall: ast::FunctionCall = {
+    <i:Identifier> "(" <args:Comma<Expression>> ")" => ast::FunctionCall{name:i, arguments: args}
+}
+
+pub Expression: Box<ast::Expression> = {
+    <l:Expression> "+" <r:Factor> => Box::new(ast::Expression::Op(l, ast::Operator::Plus, r)),
+    <l:Expression> "-" <r:Factor> => Box::new(ast::Expression::Op(l, ast::Operator::Minus, r)),
+    Factor,
+}
+
+pub Factor: Box<ast::Expression> = {
+    <l:Factor> "*" <r:Term> => Box::new(ast::Expression::Op(l, ast::Operator::Mul, r)),
+    <l:Factor> "/" <r:Term> => Box::new(ast::Expression::Op(l, ast::Operator::Div, r)),
+    Term,
+}
+
+pub Term: Box<ast::Expression> = {
+    LiteralInt => Box::new(ast::Expression::LiteralInt(<>)),
+    Identifier => Box::new(ast::Expression::Identifier(<>)),
+    <FunctionCall> => Box::new(ast::Expression::FunctionCall(<>)),
+    "(" <Expression> ")",
+}
+
+pub Block: ast::Block = {
+    "{" <e:Expression> "}" => ast::Block{expression: e}
+}
+
+pub VariableDeclaration: ast::VariableDeclaration = {
+    Identifier => ast::VariableDeclaration{name: <>}
+}
+
+pub Function: ast::Function = {
+    "fn" <n:Identifier> "(" <args:Comma<VariableDeclaration>> ")" <b:Block> => ast::Function{name: n, arguments: args, block: b}
+}
+
+
+pub Module: ast::Module = {
+    <fs:Function*> => ast::Module{functions: fs}
+}
+
+
+// From https://lalrpop.github.io/lalrpop/tutorial/006_macros.html
+// Comma seperated list of T with optional trailing comma
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
