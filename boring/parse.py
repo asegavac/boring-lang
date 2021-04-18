@@ -174,13 +174,13 @@ class TreeToBoring(Transformer):
 
     def expression(self, exp) -> Expression:
         (exp,) = exp
-        if type(exp) == Expression:
+        if isinstance(exp, Expression):
             return exp
         return Expression(expression=exp)
 
     def factor(self, factor) -> Expression:
         (factor,) = factor
-        if type(factor) == Expression:
+        if isinstance(factor, Expression):
             return factor
         return Expression(factor)
 
