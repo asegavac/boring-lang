@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use crate::ast;
-
+use crate::types;
 
 grammar;
 
@@ -53,7 +53,7 @@ pub Block: ast::Block = {
 }
 
 pub TypeUsage: ast::TypeUsage = {
-    <n:Spanned<Identifier>> => ast::TypeUsage{name: n}
+    <n:Spanned<Identifier>> => ast::TypeUsage{name: n, ty: types::SpecifiedType::Unknown}
 }
 
 pub VariableDeclaration: ast::VariableDeclaration = {

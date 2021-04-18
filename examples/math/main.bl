@@ -1,4 +1,5 @@
 fn add(a, b) {
+    let foo = 4;
     a + b
 }
 
