@@ -1,0 +1,28 @@
+
+
+
+
+# On types
+Type Usage != Type Definition
+
+
+type List[T] struct {
+
+}
+
+
+fn add[T: addable](a: T, b: T): T {
+  return a + b;
+}
+
+type usages:
+List[Int64]
+fn(int, int): List[Int64]
+
+
+
+@dataclass
+class TypeUsage:
+  result: Identifier # Result of useage - either is the type, or is the return value if it's a function
+  type_args: List[Type] # Generics
+  arguments: Optional[List[Type]] # Specified if it is a function, this is how you tell if it's a function

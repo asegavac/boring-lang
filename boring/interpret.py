@@ -22,19 +22,28 @@ class Interpreter:
         assert len(function_definition.arguments) == len(function_call.arguments)
 
         for i, argument in enumerate(function_definition.arguments):
-            new_env.identifiers[argument.name.name] = self.handle_expression(env, function_call.arguments[i])
+            new_env.identifiers[argument.name.name] = self.handle_expression(
+                env, function_call.arguments[i]
+            )
         return self.handle_block(new_env, function_definition.block)
-
 
     def handle_operation(self, env, operation):
         if operation.op == parse.Operator.plus:
-            return self.handle_expression(env, operation.left) + self.handle_expression(env, operation.right)
+            return self.handle_expression(env, operation.left) + self.handle_expression(
+                env, operation.right
+            )
         elif operation.op == parse.Operator.minus:
-            return self.handle_expression(env, operation.left) - self.handle_expression(env, operation.right)
+            return self.handle_expression(env, operation.left) - self.handle_expression(
+                env, operation.right
+            )
         elif operation.op == parse.Operator.mult:
-            return self.handle_expression(env, operation.left) * self.handle_expression(env, operation.right)
+            return self.handle_expression(env, operation.left) * self.handle_expression(
+                env, operation.right
+            )
         elif operation.op == parse.Operator.div:
-            return self.handle_expression(env, operation.left) / self.handle_expression(env, operation.right)
+            return self.handle_expression(env, operation.left) / self.handle_expression(
+                env, operation.right
+            )
 
     def handle_expression(self, env, expression):
         if type(expression.expression) == parse.LiteralInt:
@@ -58,13 +67,15 @@ class Interpreter:
         for function in module.functions:
             env.identifiers[function.name.name] = function
 
-        if 'main' not in env.identifiers:
+        if "main" not in env.identifiers:
             raise Exception("must have main function")
 
-        return self.handle_function_call(env, parse.FunctionCall(name=parse.Identifier("main"), arguments=[]))
+        return self.handle_function_call(
+            env, parse.FunctionCall(name=parse.Identifier("main"), arguments=[])
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     with open(sys.argv[1]) as f:
         tree = parse.boring_parser.parse(f.read())
         # print(tree)

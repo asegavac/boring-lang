@@ -1,9 +1,9 @@
 version: "3"
 services:
-  boring:
-    build: .
-    volumes:
-      - .:/code/
+  # boring:
+  #   build: .
+  #   volumes:
+  #     - .:/code/
   boring-python:
     build:
       context: .

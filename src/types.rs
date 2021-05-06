@@ -62,14 +62,3 @@ pub enum SpecifiedType {
     Unknown,
     Type(Type),
 }
-
-
-// Env table
-// name => ast_id
-//
-// Type Table
-// ast_id => type_id
-//
-//
-// TypeDef Table
-// type_id => type_def

@@ -1,12 +1,12 @@
-fn add(a, b) {
+fn add(a: u32, b: u32): u32 {
     let foo = 4;
-    a + b
+    a + b + foo
 }
 
-fn subtract(a, b) {
+fn subtract(a: u32, b: u32): u32 {
     a - b
 }
 
-fn main() {
+fn main(): u32 {
     add(4, subtract(5, 2))
 }
