@@ -198,7 +198,9 @@ boring_grammar = r"""
     %import common.SIGNED_INT
     %import common.SIGNED_FLOAT
     %import common.WS
+    %import common.CPP_COMMENT
     %ignore WS
+    %ignore CPP_COMMENT
     """
 
 next_sub_id = 0

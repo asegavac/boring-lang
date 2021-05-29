@@ -31,7 +31,7 @@ class TypeUsage:
 
 TODO:
 * ~Float Literals~
-* Block expression
+* ~Block expression~
 * Return keyword
 * Structs
 * Generics

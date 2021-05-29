@@ -1,3 +1,4 @@
+// adds a and b, but also 4 for some reason
 fn add(a: I32, b: I32): I32 {
     let foo = 4;
     let test_float: F32 = {
