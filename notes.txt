@@ -26,3 +26,16 @@ class TypeUsage:
   result: Identifier # Result of useage - either is the type, or is the return value if it's a function
   type_args: List[Type] # Generics
   arguments: Optional[List[Type]] # Specified if it is a function, this is how you tell if it's a function
+
+
+
+TODO:
+* ~Float Literals~
+* Block expression
+* Return keyword
+* Structs
+* Generics
+* Enums
+* Methods
+* Traits
+* Async

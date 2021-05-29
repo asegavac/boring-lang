@@ -131,6 +131,10 @@ class TypeChecker:
             if self.with_literal_int(env, type_env, subexpression):
                 changed = True
             return changed
+        if isinstance(subexpression, parse.LiteralFloat):
+            if self.with_literal_float(env, type_env, subexpression):
+                changed = True
+            return changed
         if isinstance(subexpression, parse.FunctionCall):
             if self.with_function_call(env, type_env, subexpression):
                 changed = True
@@ -198,11 +202,14 @@ class TypeChecker:
                 changed = True
         return changed
 
+    def with_literal_float(self, env: Environment, type_env: TypeEnvironment, literal_float: parse.LiteralFloat) -> bool:
+        floats = ["F32", "F64", "F128"]
+        if not isinstance(literal_float.type, parse.UnknownTypeUsage):
+            assert literal_float.type.name in floats, f"{literal_float.type}"
+        return False
+
     def with_literal_int(self, env: Environment, type_env: TypeEnvironment, literal_int: parse.LiteralInt) -> bool:
-        ints = [
-            parse.DataTypeUsage(name=name)
-            for name in ["I8", "I16", "I32", "I64", "I128"]
-        ]
+        ints = ["I8", "I16", "I32", "I64", "I128", "U8", "U16", "U32", "U64", "U128"]
         if not isinstance(literal_int.type, parse.UnknownTypeUsage):
-            assert literal_int.type in ints, f"{literal_int.type}"
+            assert literal_int.type.name in ints, f"{literal_int.type}"
         return False

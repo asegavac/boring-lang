@@ -63,6 +63,12 @@ class LiteralInt:
 
 
 @dataclass
+class LiteralFloat:
+    value: float
+    type: TypeUsage
+
+
+@dataclass
 class FunctionCall:
     source: "Expression"
     arguments: List["Expression"]
@@ -85,7 +91,7 @@ class VariableUsage:
 
 @dataclass
 class Expression:
-    expression: Union[LiteralInt, FunctionCall, VariableUsage, Operation]
+    expression: Union[LiteralInt, LiteralFloat, FunctionCall, VariableUsage, Operation]
     type: TypeUsage
 
 
@@ -131,8 +137,9 @@ boring_grammar = r"""
     mult : "*"
     div : "/"
 
-    literal_int: SIGNED_NUMBER
-    identifier : NAME
+    literal_float : SIGNED_FLOAT
+    literal_int : SIGNED_INT
+    identifier : CNAME
 
     function_call : expression "(" [expression ("," expression)*] ")"
 
@@ -152,6 +159,7 @@ boring_grammar = r"""
            | term
 
     term : literal_int
+         | literal_float
          | variable_usage
          | function_call
          | "(" expression ")"
@@ -185,8 +193,9 @@ boring_grammar = r"""
 
     module : (function)*
 
-    %import common.CNAME -> NAME
-    %import common.SIGNED_NUMBER
+    %import common.CNAME
+    %import common.SIGNED_INT
+    %import common.SIGNED_FLOAT
     %import common.WS
     %ignore WS
     """
@@ -213,6 +222,10 @@ class TreeToBoring(Transformer):
     def literal_int(self, n) -> LiteralInt:
         (n,) = n
         return LiteralInt(value=int(n), type=UnknownTypeUsage())
+
+    def literal_float(self, f) -> LiteralFloat:
+        (f,) = f
+        return LiteralFloat(value=float(f), type=UnknownTypeUsage())
 
     def identifier(self, i) -> str:
         (i,) = i
