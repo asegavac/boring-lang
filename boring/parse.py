@@ -91,7 +91,7 @@ class VariableUsage:
 
 @dataclass
 class Expression:
-    expression: Union[LiteralInt, LiteralFloat, FunctionCall, VariableUsage, Operation]
+    expression: Union[LiteralInt, LiteralFloat, FunctionCall, "Block", VariableUsage, Operation]
     type: TypeUsage
 
 
@@ -163,6 +163,7 @@ boring_grammar = r"""
          | variable_usage
          | function_call
          | "(" expression ")"
+         | block
 
     let_statement : "let" identifier "=" expression ";"
                   | "let" identifier ":" type_usage "=" expression ";"

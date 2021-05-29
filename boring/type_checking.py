@@ -139,6 +139,10 @@ class TypeChecker:
             if self.with_function_call(env, type_env, subexpression):
                 changed = True
             return changed
+        if isinstance(subexpression, parse.Block):
+            if self.with_block(env, type_env, subexpression):
+                changed = True
+            return changed
         if isinstance(subexpression, parse.VariableUsage):
             if self.with_variable_usage(env, type_env, subexpression):
                 changed = True
