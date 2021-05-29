@@ -29,11 +29,6 @@ UNIT_TYPE = "()"
 
 
 @dataclass
-class Identifier:
-    name: str
-
-
-@dataclass
 class FunctionTypeUsage:
     arguments: List[
         "TypeUsage"
@@ -43,10 +38,15 @@ class FunctionTypeUsage:
 
 @dataclass
 class DataTypeUsage:
-    name: Identifier
+    name: str
 
 
-TypeUsage = Union[FunctionTypeUsage, DataTypeUsage]
+@dataclass
+class UnknownTypeUsage:
+    pass
+
+
+TypeUsage = Union[FunctionTypeUsage, DataTypeUsage, UnknownTypeUsage]
 
 
 class Operator(enum.Enum):
@@ -59,14 +59,14 @@ class Operator(enum.Enum):
 @dataclass
 class LiteralInt:
     value: int
-    type: Optional[TypeUsage]
+    type: TypeUsage
 
 
 @dataclass
 class FunctionCall:
     source: "Expression"
     arguments: List["Expression"]
-    type: Optional[TypeUsage]
+    type: TypeUsage
 
 
 @dataclass
@@ -74,25 +74,25 @@ class Operation:
     left: "Expression"
     op: Operator
     right: "Expression"
-    type: Optional[TypeUsage]
+    type: TypeUsage
 
 
 @dataclass
 class VariableUsage:
-    name: Identifier
-    type: Optional[TypeUsage]
+    name: str
+    type: TypeUsage
 
 
 @dataclass
 class Expression:
     expression: Union[LiteralInt, FunctionCall, VariableUsage, Operation]
-    type: Optional[TypeUsage]
+    type: TypeUsage
 
 
 @dataclass
 class LetStatement:
-    variable_name: Identifier
-    type: Optional[TypeUsage]
+    variable_name: str
+    type: TypeUsage
     expression: Expression
 
 
@@ -102,18 +102,18 @@ Statement = Union[LetStatement, Expression]
 @dataclass
 class Block:
     statements: List[Statement]
-    type: Optional[TypeUsage]
+    type: TypeUsage
 
 
 @dataclass
 class VariableDeclaration:
-    name: Identifier
+    name: str
     type: TypeUsage
 
 
 @dataclass
 class Function:
-    name: Identifier
+    name: str
     arguments: List[VariableDeclaration]
     block: Block
     return_type: TypeUsage
@@ -191,6 +191,8 @@ boring_grammar = r"""
     %ignore WS
     """
 
+next_sub_id = 0
+
 
 class TreeToBoring(Transformer):
     def __init__(self, *args, **kwargs):
@@ -210,46 +212,46 @@ class TreeToBoring(Transformer):
 
     def literal_int(self, n) -> LiteralInt:
         (n,) = n
-        return LiteralInt(value=int(n), type=None)
+        return LiteralInt(value=int(n), type=UnknownTypeUsage())
 
-    def identifier(self, i) -> Identifier:
+    def identifier(self, i) -> str:
         (i,) = i
-        return Identifier(name=str(i))
+        return str(i)
 
     def variable_usage(self, variable) -> VariableUsage:
         (variable,) = variable
-        return VariableUsage(name=variable, type=None)
+        return VariableUsage(name=variable, type=UnknownTypeUsage())
 
     def function_call(self, call) -> FunctionCall:
-        return FunctionCall(source=call[0], arguments=call[1:], type=None)
+        return FunctionCall(source=call[0], arguments=call[1:], type=UnknownTypeUsage())
 
     def add_expression(self, ae) -> Operation:
-        return Operation(left=ae[0], op=ae[1], right=ae[2], type=None)
+        return Operation(left=ae[0], op=ae[1], right=ae[2], type=UnknownTypeUsage())
 
     def sub_expression(self, se) -> Operation:
-        return Operation(left=se[0], op=se[1], right=se[2], type=None)
+        return Operation(left=se[0], op=se[1], right=se[2], type=UnknownTypeUsage())
 
     def mult_expression(self, se) -> Operation:
-        return Operation(left=se[0], op=se[1], right=se[2], type=None)
+        return Operation(left=se[0], op=se[1], right=se[2], type=UnknownTypeUsage())
 
     def div_expression(self, se) -> Operation:
-        return Operation(left=se[0], op=se[1], right=se[2], type=None)
+        return Operation(left=se[0], op=se[1], right=se[2], type=UnknownTypeUsage())
 
     def expression(self, exp) -> Expression:
         (exp,) = exp
         if isinstance(exp, Expression):
             return exp
-        return Expression(expression=exp, type=None)
+        return Expression(expression=exp, type=UnknownTypeUsage())
 
     def factor(self, factor) -> Expression:
         (factor,) = factor
         if isinstance(factor, Expression):
             return factor
-        return Expression(expression=factor, type=None)
+        return Expression(expression=factor, type=UnknownTypeUsage())
 
     def term(self, term) -> Expression:
         (term,) = term
-        return Expression(expression=term, type=None)
+        return Expression(expression=term, type=UnknownTypeUsage())
 
     def let_statement(self, let_statement) -> LetStatement:
         if len(let_statement) == 3:
@@ -262,7 +264,7 @@ class TreeToBoring(Transformer):
         (variable_name, expression) = let_statement
         return LetStatement(
             variable_name=variable_name,
-            type=None,
+            type=UnknownTypeUsage(),
             expression=expression,
         )
 
@@ -271,7 +273,7 @@ class TreeToBoring(Transformer):
         return statement
 
     def block(self, block) -> Block:
-        return Block(statements=block, type=None)
+        return Block(statements=block, type=UnknownTypeUsage())
 
     def data_type(self, name) -> TypeUsage:
         (name,) = name
@@ -280,7 +282,7 @@ class TreeToBoring(Transformer):
     def function_type(self, type_usage) -> TypeUsage:
         return FunctionTypeUsage(
             arguments=type_usage,
-            return_type=DataTypeUsage(name=Identifier(name=UNIT_TYPE)),
+            return_type=DataTypeUsage(name=UNIT_TYPE),
         )
 
     def function_type_with_return(self, type_usage) -> TypeUsage:
@@ -298,11 +300,11 @@ class TreeToBoring(Transformer):
         return Function(
             name=function[0],
             arguments=function[1:-1],
-            return_type=DataTypeUsage(name=Identifier(name=UNIT_TYPE)),
+            return_type=DataTypeUsage(name=UNIT_TYPE),
             block=function[-1],
             type=FunctionTypeUsage(
                 arguments=[arg.type for arg in function[1:-1]],
-                return_type=DataTypeUsage(name=Identifier(name=UNIT_TYPE)),
+                return_type=DataTypeUsage(name=UNIT_TYPE),
             ),
         )
 

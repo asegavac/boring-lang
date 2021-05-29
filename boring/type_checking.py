@@ -9,10 +9,53 @@ Identified = Union[parse.LetStatement, parse.Function, parse.VariableDeclaration
 Environment = Dict[str, Identified]
 
 
+def unify(first, second) -> bool:
+    result, changed = type_compare(first.type, second.type)
+    first.type = result
+    second.type = result
+    return changed
+
+
+def type_compare(first, second) -> (parse.TypeUsage, bool):
+    print(first, second)
+    if isinstance(first, parse.UnknownTypeUsage):
+        if not isinstance(second, parse.UnknownTypeUsage):
+            return second, True
+        else:
+            return parse.UnknownTypeUsage(), False
+    else:
+        if isinstance(second, parse.UnknownTypeUsage):
+            return first, True
+        else:
+            if isinstance(first, parse.DataTypeUsage) and isinstance(
+                second, parse.DataTypeUsage
+            ):
+                assert second == first
+                return first, False
+            elif isinstance(first, parse.FunctionTypeUsage) and isinstance(
+                second, parse.FunctionTypeUsage
+            ):
+                return_type, changed = type_compare(
+                    first.return_type, second.return_type
+                )
+                arguments = []
+                assert len(first.arguments) == len(second.arguments)
+                for first_arg, second_arg in zip(first.arguments, second.arguments):
+                    argument_type, argument_changed = type_compare(
+                        first_arg, second_arg
+                    )
+                    arguments.append(argument_type)
+                    if argument_changed:
+                        changed = True
+                return parse.FunctionTypeUsage(arguments, return_type), changed
+            else:
+                assert False, f"mismatched types {first}, {second}"
+
+
 class TypeChecker:
     def with_module(self, env: Environment, module: parse.Module) -> bool:
         for function in module.functions:
-            env[function.name.name] = function
+            env[function.name] = function
         found = False
         for function in module.functions:
             if self.with_function(env, function):
@@ -22,10 +65,15 @@ class TypeChecker:
     def with_function(self, env: Environment, function: parse.Function) -> bool:
         function_env = env.copy()
         for argument in function.arguments:
-            function_env[argument.name.name] = argument
+            function_env[argument.name] = argument
         assert isinstance(function.type, parse.FunctionTypeUsage)
-        function.block.type = function.type.return_type
-        return self.with_block(function_env, function.block)
+
+        type, changed = type_compare(function.block.type, function.type.return_type)
+        function.block.type = type
+        function.type.return_type = type
+        if self.with_block(function_env, function.block):
+            changed = True
+        return changed
 
     # Skip variable VariableDeclaration
 
@@ -33,30 +81,26 @@ class TypeChecker:
         block_env = env.copy()
         # if parent is void, must be statement
         # if parent is type, must be expression
-        found = False
+        changed = False
         final = block.statements[-1]
         if isinstance(final, parse.LetStatement):
-            if block.type is None:
+            if isinstance(block.type, parse.UnknownTypeUsage):
                 found = True
-                block.type = parse.DataTypeUsage(name=parse.Identifier(name=parse.UNIT_TYPE))
+                block.type = parse.DataTypeUsage(
+                    name=parse.Identifier(name=parse.UNIT_TYPE)
+                )
             else:
-                assert block.type == parse.DataTypeUsage(name=parse.Identifier(name=parse.UNIT_TYPE))
+                assert block.type == parse.DataTypeUsage(
+                    name=parse.Identifier(name=parse.UNIT_TYPE)
+                )
         elif isinstance(final, parse.Expression):
-            if block.type is None:
-                if final.type is not None:
-                    found = True
-                    block.type = final.type
-            else:
-                if final.type is None:
-                    found = True
-                    final.type = block.type
-                else:
-                    assert final.type == block.type
+            if unify(final, block):
+                changed = True
 
         for statement in block.statements:
             if self.with_statement(block_env, statement):
-                found = True
-        return found
+                changed = True
+        return changed
 
     def with_statement(self, env: Environment, statement: parse.Statement) -> bool:
         if isinstance(statement, parse.LetStatement):
@@ -70,136 +114,93 @@ class TypeChecker:
         self, env: Environment, let_statement: parse.LetStatement
     ) -> bool:
         found = False
-        env[let_statement.variable_name.name] = let_statement
-        if let_statement.type is None:
-            if let_statement.expression.type is not None:
-                let_statement.type = let_statement.expression.type
-                found = True
-        else:
-            if let_statement.expression.type is None:
-                let_statement.expression.type = let_statement.type
-                found = True
-            else:
-                assert let_statement.expression.type == let_statement.type
+        env[let_statement.variable_name] = let_statement
+        changed = unify(let_statement, let_statement.expression)
         if self.with_expression(env, let_statement.expression):
-            found = True
-        return found
-
+            changed = True
+        return changed
 
     def with_expression(self, env: Environment, expression: parse.Expression) -> bool:
         subexpression = expression.expression
-        found = False
-        # generic to all types
-        if expression.type is None:
-            if subexpression.type is not None:
-                expression.type = subexpression.type
-                found = True
-        else:
-            if subexpression.type is None:
-                subexpression.type = expression.type
-                found = True
-            else:
-                assert subexpression.type == expression.type
+        changed = unify(subexpression, expression)
 
         if isinstance(subexpression, parse.LiteralInt):
+            print(f"fooooo {expression.type}, {subexpression.type}")
             if self.with_literal_int(env, subexpression):
-                found = True
-            return found
+                changed = True
+            return changed
         if isinstance(subexpression, parse.FunctionCall):
             if self.with_function_call(env, subexpression):
-                found = True
-            return found
+                changed = True
+            return changed
         if isinstance(subexpression, parse.VariableUsage):
             if self.with_variable_usage(env, subexpression):
-                found = True
-            return found
+                changed = True
+            return changed
         if isinstance(subexpression, parse.Operation):
             if self.with_operation(env, subexpression):
-                found = True
-            return found
+                changed = True
+            return changed
         assert False
 
     def with_variable_usage(
         self, env: Environment, variable_usage: parse.VariableUsage
     ) -> bool:
-        found = False
-        variable = env[variable_usage.name.name]
-        if variable_usage.type is None:
-            if variable.type is not None:
-                variable_usage.type = variable.type
-                found = True
-        else:
-            if variable.type is None:
-                # print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-                # print(f"{variable.name} {variable.type}")
-                variable.type = variable_usage.type
-                found = True
-            else:
-                assert variable.type == variable_usage.type
-        return found
+        return unify(variable_usage, env[variable_usage.name])
 
     def with_operation(self, env: Environment, operation: parse.Operation) -> bool:
-        found = False
-        if operation.type is None:
-            if operation.left.type is not None:
-                operation.type = operation.left.type
-                found = True
-        else:
-            if operation.left.type is None:
-                operation.left.type = operation.type
-                found = True
-            else:
-                assert operation.left.type == operation.type
-        if operation.type is None:
-            if operation.right.type is not None:
-                operation.type = operation.right.type
-                found = True
-        else:
-            if operation.right.type is None:
-                operation.right.type = operation.type
-                found = True
-            else:
-                assert operation.right.type == operation.type
+        changed = False
+        if unify(operation, operation.left):
+            changed = True
+        if unify(operation, operation.right):
+            changed = True
         if self.with_expression(env, operation.left):
-            found = True
+            changed = True
         if self.with_expression(env, operation.right):
-            found = True
-        return found
+            changed = True
+        return changed
 
     def with_function_call(
         self, env: Environment, function_call: parse.FunctionCall
     ) -> bool:
-        found = False
-        if function_call.type is None:
-            if function_call.source.type is not None:
-                assert isinstance(function_call.source.type, parse.FunctionTypeUsage)
-                found = True
-                function_call.type = function_call.source.type.return_type
-        else:
-            if function_call.source.type is not None:
-                assert isinstance(function_call.source.type, parse.FunctionTypeUsage)
-                assert function_call.type == function_call.source.type.return_type
+        changed = False
+        if isinstance(function_call.source.type, parse.UnknownTypeUsage):
+            function_call.source.type = parse.FunctionTypeUsage(
+                arguments=[parse.UnknownTypeUsage()] * len(function_call.arguments),
+                return_type=parse.UnknownTypeUsage(),
+            )
+            changed = True
         if self.with_expression(env, function_call.source):
-            found = True
-
-        if function_call.source.type is not None:
-            assert isinstance(function_call.source.type, parse.FunctionTypeUsage)
-            assert len(function_call.arguments) == len(function_call.source.type.arguments)
-            for (argument, type_argument) in zip(function_call.arguments, function_call.source.type.arguments):
-                if argument.type is None:
-                    argument.type = type_argument
-                    found = True
-                else:
-                    assert argument.type == type_argument
-
+            changed = True
         for argument in function_call.arguments:
             if self.with_expression(env, argument):
-                found = True
-        return found
+                changed = True
 
+        return_type, return_changed = type_compare(
+            function_call.type, function_call.source.type.return_type
+        )
+        function_call.type = return_type
+        function_call.source.type.return_type = return_type
+        if return_changed:
+            changed = True
+
+        for argument, argument_type in zip(
+            function_call.arguments, function_call.source.type.arguments
+        ):
+            argument_out_type, argument_changed = type_compare(
+                argument.type, function_call.source.type.return_type
+            )
+            argument.type = argument_out_type
+            function_call.source.type.return_type = argument_out_type
+            if argument_changed:
+                changed = True
+        return changed
 
     def with_literal_int(self, env: Environment, literal_int: parse.LiteralInt) -> bool:
-        ints = [parse.DataTypeUsage(name=parse.Identifier(name=name)) for name in ["Int8", "Int16", "Int32", "Int64", "Int128", "u32"]]
-        if literal_int.type is not None:
+        ints = [
+            parse.DataTypeUsage(name=name)
+            for name in ["I8", "I16", "I32", "I64", "I128"]
+        ]
+        if not isinstance(literal_int.type, parse.UnknownTypeUsage):
             assert literal_int.type in ints, f"{literal_int.type}"
         return False
