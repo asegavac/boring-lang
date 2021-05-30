@@ -28,14 +28,19 @@ class TypeUsage:
   arguments: Optional[List[Type]] # Specified if it is a function, this is how you tell if it's a function
 
 
+if / match return never if all blocks return never;
+blocks propagate never except at the function level;
+
 
 TODO:
 * ~Float Literals~
 * ~Block expression~
-* Return keyword
+* ~Return keyword ~
 * Structs
 * Generics
 * Enums
 * Methods
+* Arrays
+* Strings
 * Traits
 * Async

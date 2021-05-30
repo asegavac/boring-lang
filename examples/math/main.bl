@@ -23,6 +23,10 @@ fn i_hate_this(a: F64): F64 {
     };
 }
 
+fn unit_function() {
+  let a: I32 = 4;
+}
+
 fn main(): I32 {
     add(4, subtract(5, 2))
 }
