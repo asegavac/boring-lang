@@ -26,6 +26,7 @@ def pretty_print(clas, indent=0):
 
 
 UNIT_TYPE = "()"
+NEVER_TYPE = "!"
 
 
 @dataclass
@@ -90,8 +91,14 @@ class VariableUsage:
 
 
 @dataclass
+class ReturnStatement:
+    source: "Expression"
+    type: TypeUsage
+
+
+@dataclass
 class Expression:
-    expression: Union[LiteralInt, LiteralFloat, FunctionCall, "Block", VariableUsage, Operation]
+    expression: Union[LiteralInt, LiteralFloat, FunctionCall, "Block", ReturnStatement, VariableUsage, Operation]
     type: TypeUsage
 
 
@@ -150,6 +157,8 @@ boring_grammar = r"""
 
     variable_usage : identifier
 
+    return_statement : "return" expression ";"
+
     expression : add_expression
                | sub_expression
                | factor
@@ -169,6 +178,7 @@ boring_grammar = r"""
                   | "let" identifier ":" type_usage "=" expression ";"
 
     statement : let_statement
+              | return_statement
               | expression
 
     block : "{" (statement)* "}"
@@ -237,6 +247,10 @@ class TreeToBoring(Transformer):
     def variable_usage(self, variable) -> VariableUsage:
         (variable,) = variable
         return VariableUsage(name=variable, type=UnknownTypeUsage())
+
+    def return_statement(self, return_expression) -> ReturnStatement:
+        (return_expression,) = return_expression
+        return ReturnStatement(source=return_expression, type=DataTypeUsage(name=NEVER_TYPE))
 
     def function_call(self, call) -> FunctionCall:
         return FunctionCall(source=call[0], arguments=call[1:], type=UnknownTypeUsage())

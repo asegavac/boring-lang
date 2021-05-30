@@ -1,7 +1,7 @@
 import sys
 from typing import List
 from boring.parse import boring_parser, TreeToBoring, pretty_print
-from boring.type_checking import TypeChecker
+from boring.type_checking import TypeChecker, Context
 from boring import typedefs
 
 if __name__ == "__main__":
@@ -11,7 +11,7 @@ if __name__ == "__main__":
         result = TreeToBoring().transform(tree)
         # pretty_print(result)
         type_checker = TypeChecker()
-        while type_checker.with_module({}, typedefs.builtins, result):
+        while type_checker.with_module(Context({}, typedefs.builtins, None), result):
             print("loop")
         # type_checker.with_module({}, result)
         pretty_print(result)
