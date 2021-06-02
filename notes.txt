@@ -35,8 +35,13 @@ blocks propagate never except at the function level;
 TODO:
 * ~Float Literals~
 * ~Block expression~
-* ~Return keyword ~
+* ~Return keyword~
+* ~Normal assignment~
 * Structs
+  * Define
+  * Literal
+  * Getter
+  * Setter
 * Generics
 * Enums
 * Methods

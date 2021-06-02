@@ -109,7 +109,14 @@ class LetStatement:
     expression: Expression
 
 
-Statement = Union[LetStatement, Expression]
+@dataclass
+class AssignmentStatement:
+    variable_name: str
+    type: TypeUsage
+    expression: Expression
+
+
+Statement = Union[LetStatement, AssignmentStatement, Expression]
 
 
 @dataclass
@@ -177,7 +184,10 @@ boring_grammar = r"""
     let_statement : "let" identifier "=" expression ";"
                   | "let" identifier ":" type_usage "=" expression ";"
 
+    assignment_statement : identifier "=" expression ";"
+
     statement : let_statement
+              | assignment_statement
               | return_statement
               | expression
 
@@ -293,6 +303,14 @@ class TreeToBoring(Transformer):
             )
         (variable_name, expression) = let_statement
         return LetStatement(
+            variable_name=variable_name,
+            type=UnknownTypeUsage(),
+            expression=expression,
+        )
+
+    def assignment_statement(self, assignment_statement) -> AssignmentStatement:
+        (variable_name, expression) = assignment_statement
+        return AssignmentStatement(
             variable_name=variable_name,
             type=UnknownTypeUsage(),
             expression=expression,

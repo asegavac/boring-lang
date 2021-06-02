@@ -130,8 +130,10 @@ class TypeChecker:
     def with_statement(self, ctx: Context, statement: parse.Statement) -> bool:
         if isinstance(statement, parse.ReturnStatement):
             return self.with_return_statement(ctx, statement)
-        if isinstance(statement, parse.LetStatement):
+        elif isinstance(statement, parse.LetStatement):
             return self.with_let_statement(ctx, statement)
+        elif isinstance(statement, parse.AssignmentStatement):
+            return self.with_assignment_statement(ctx, statement)
         elif isinstance(statement, parse.Expression):  # expression
             return self.with_expression(ctx, statement)
         else:
@@ -144,7 +146,20 @@ class TypeChecker:
         ctx.environment[let_statement.variable_name] = let_statement
         if self.with_expression(ctx, let_statement.expression):
             changed = True
-        changed = unify(ctx, let_statement, let_statement.expression)
+        if unify(ctx, let_statement, let_statement.expression):
+            changed = True
+        return changed
+
+    def with_assignment_statement(
+        self, ctx: Context, assignment_statement: parse.AssignmentStatement
+    ) -> bool:
+        changed = False
+        if self.with_expression(ctx, assignment_statement.expression):
+            changed = True
+        if unify(ctx, assignment_statement, ctx.environment[assignment_statement.variable_name]):
+            changed = True
+        if unify(ctx, assignment_statement, assignment_statement.expression):
+            changed = True
         return changed
 
     def with_return_statement(
