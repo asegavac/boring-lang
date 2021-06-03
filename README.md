@@ -35,17 +35,17 @@ async fn handle(req: http.Request, resp: mut http.Response) {
     id: 4,
     name: "Steven",
     email: "swerbenjagermanjensen@example.com"
-  }
-  await resp.set_status(200)
-  await resp.write(json.encode[ExampleResponse](response_data))
+  };
+  await resp.set_status(200);
+  await resp.write(json.encode[ExampleResponse](response_data));
 }
 
 async fn main(args: Vec[Str]) I32 {
-    let router = http.Router("").add_route("/myroute", handle)
-    let http_server = http.Server("localhost", 8080, router)
-    let err = await http_server.serve_forever()
-    await log.info("error serving: ", err)
-    return 1
+    let router = http.Router("").add_route("/myroute", handle);
+    let http_server = http.Server("localhost", 8080, router);
+    let err = await http_server.serve_forever();
+    await log.info("error serving: ", err);
+    return 1;
 }
 ```
 
@@ -96,29 +96,29 @@ type HTTPRequest[Ctx: Context] = async fn(Ctx, http.Request, mut http.Response)
 pub fn tracing_middleware[Ctx: Tracing](handler: HTTPRequest[Ctx]) HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     with tracing.Span(ctx, "request_duration") {
-      await handler(ctx, req, resp)
+      await handler(ctx, req, resp);
     }
-  }
+  };
 }
 
 pub fn auth_middleware[Ctx: Auth](handler: HTTPRequest[Ctx], scope: Str) HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if ctx.has_scope(scope) {
-      await handler(ctx, req, resp)
+      await handler(ctx, req, resp);
     }
-    await resp.set_status(403)
-    await resp.write("missing scope")
-  }
+    await resp.set_status(403);
+    await resp.write("missing scope");
+  };
 }
 
 pub fn cancel_middleware[Ctx: Cancel](handler: HTTPRequest[Ctx]) HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if !(await ctx.is_cancelled()) { // check cancel token
-      await handler(ctx, req, resp)
+      await handler(ctx, req, resp);
     }
-    await resp.set_status(400)
-    await resp.write("cancelled")
-  }
+    await resp.set_status(400);
+    await resp.write("cancelled");
+  };
 }
 ```
 
@@ -180,7 +180,7 @@ async for result in paginated_list {
 
 ```
 while true {
-  break // do nothing
+  break; // do nothing
 }
 
 for i in range(100) {
@@ -199,7 +199,7 @@ for i in range(100) {
 // but it may also transform it into another error adding context.
 
 return async with db.transation(ctx) as t {
-    await t.insert(ctx, record) // returns result type
+    await t.insert(ctx, record); // returns result type
 }
 ```
 
@@ -212,7 +212,7 @@ return async with db.transation(ctx) as t {
 `match` expressions provide pattern matching, similar to a `C` switch statement.
 
 ```
-let number = 3
+let number = 3;
 let result = match number {
   1 => 'foo',
   3 => 'bar',
