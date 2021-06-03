@@ -1,44 +1,49 @@
 # Boring Lang Proposal
 
 **NOTE: This repo is a work in progress as I learn compiler writing, I may abandon this.**
+**NOTE: The rust code in the repo is temporary abandoned while I finish the python POC, this will eventually be moved to rust**
 
 The Boring Programming Language (Boring-Lang) is an attempt to create an easy, productive, general purpose programming language that makes as few interesting choices as possible while still being in line with modern concepts in programming languages.
 
 The language (wish list):
 * is compiled with a run-time (llvm for convenience + c/rust compatibility)
-* is garbage collected
+* has managed memory (via weak pointers and automatic reference counting)
 * uses async-await for all IO, with a built-in multi-core scheduler
 * supports algebraic data types (Result type for errors, Maybe/Optional type for nullables)
-* supports parametric polymorphism (generics)
+* supports parametric polymorphism (generics) with higher kinded types
 * uses struct+traits, rather than classes or stuct+interfaces
-* has a rich standard library (http server, actor model)
+* has a rich standard library (similar scale to python or go)
 * is immutable by default
 
-It's basically a middle-ground of Rust, Golang, Swift, Typescript, and Python.
+It's basically a middle-ground of Rust, Golang, Swift, Typescript, and Python. The goal is not to break any new ground in PL theory, or even create a language anyone likes, but rather to create a language with as few deal-breakers as possible for day-to-day industrial programming.
 
 ## Http Server Example
+
 ```
 import net.http as http
 import logging as log
 import json as json
 
 type ExampleResponse struct {
-  id: Int32
+  id: I32
   name: Str
   email: Str
 }
 
 async fn handle(req: http.Request, resp: mut http.Response) {
-  log.info("request: ", req.body)
-  let response_data = ExampleResponse{id: 4, name: "Steven", email: "swerbenjagermanjensen@example.com"}
+  let response_data = ExampleResponse{
+    id: 4,
+    name: "Steven",
+    email: "swerbenjagermanjensen@example.com"
+  }
   await resp.set_status(200)
-  await resp.write(json.encode<ExampleResponse>(response_data))
+  await resp.write(json.encode[ExampleResponse](response_data))
 }
 
-async fn main(args: Array<Str>) Int32 {
+async fn main(args: Vec[Str]) I32 {
     let router = http.Router("").add_route("/myroute", handle)
-    http_server = http.Server("localhost", 8080, router)
-    let err = await http_server.server_forever()
+    let http_server = http.Server("localhost", 8080, router)
+    let err = await http_server.serve_forever()
     await log.info("error serving: ", err)
     return 1
 }
@@ -49,28 +54,28 @@ async fn main(args: Array<Str>) Int32 {
 All variables are immutable by default, to make them mutable use the `mut` keyword. Once a variable becomes immutable it cannot become mutable again. If you need it to become mutable, either implement the `clone` trait, or simply create a new one with the same data.
 
 ```
-let mut foo = Dict<String, Int32>() // constructors always return a mutable reference
-foo.insert("eggs", 12)
-foo.insert("bananas", 2)
-foo.insert("grapes", 2)
+let mut foo = Dict[String, Int32].new(); // constructor returns a mutable reference
+foo.insert("eggs", 12);
+foo.insert("bananas", 2);
+foo.insert("grapes", 2);
 
-let bar = foo // bar is not mutable
+let bar = foo; // bar is not mutable
 
-bar.insert("apples", 4) // fails with compiler error
+bar.insert("apples", 4); // fails with compiler error
 
-let mut baz = bar.clone()
-baz.insert("apples", 4) // fine
+let mut baz = bar.clone();
+baz.insert("apples", 4); // fine
 ```
 
 Methods on a struct must specify if they mutate the struct.
 
 ```
-impl Dict<Key: Hashable, Value> {
+impl Dict[Key: Hashable, Value] {
   fn insert(self: mut Self, key: Key, value: Value) {
     // mutate self here
   }
 
-  fn get(self: Self, key: Key) Optional<Value> {
+  fn get(self: Self, key: Key) Optional[Value] {
     // no need for `mut`
   }
 }
@@ -86,9 +91,9 @@ Context is an exceptionally useful feature in golang, but a common complaint is 
 The boring standard library solves this by using parametric polymorphism. Context is by default an empty object passed through the chain, and each function/set of context parameters is an additional trait condition applied at compile time.
 
 ```
-type HTTPRequest<Ctx: Context> = async fn(Ctx, http.Request, mut http.Response)
+type HTTPRequest[Ctx: Context] = async fn(Ctx, http.Request, mut http.Response)
 
-pub fn tracing_middleware<Ctx: Tracing>(handler: HTTPRequest<Ctx>) HTTPRequest {
+pub fn tracing_middleware[Ctx: Tracing](handler: HTTPRequest[Ctx]) HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     with tracing.Span(ctx, "request_duration") {
       await handler(ctx, req, resp)
@@ -96,7 +101,7 @@ pub fn tracing_middleware<Ctx: Tracing>(handler: HTTPRequest<Ctx>) HTTPRequest {
   }
 }
 
-pub fn auth_middleware<Ctx: Auth>(handler: HTTPRequest<Ctx>, scope: Str) HTTPRequest {
+pub fn auth_middleware[Ctx: Auth](handler: HTTPRequest[Ctx], scope: Str) HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if ctx.has_scope(scope) {
       await handler(ctx, req, resp)
@@ -106,7 +111,7 @@ pub fn auth_middleware<Ctx: Auth>(handler: HTTPRequest<Ctx>, scope: Str) HTTPReq
   }
 }
 
-pub fn cancel_middleware<Ctx: Cancel>(handler: HTTPRequest<Ctx>) HTTPRequest {
+pub fn cancel_middleware[Ctx: Cancel](handler: HTTPRequest[Ctx]) HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
     if !(await ctx.is_cancelled()) { // check cancel token
       await handler(ctx, req, resp)
@@ -119,16 +124,6 @@ pub fn cancel_middleware<Ctx: Cancel>(handler: HTTPRequest<Ctx>) HTTPRequest {
 
 for the above examples, you would pass a context type that implements all three traits.
 
-## Monadic function modifiers
-
-Boring uses function modifiers to implement functionality like `async/await` and `coroutines`. These function by [rewriting the code into a state machine](https://tmandry.gitlab.io/blog/posts/optimizing-await-1/) prior to compilation. The table below describes the modifiers currently available.
-
-|Type|Change To Return Type|Introduces to Scope|
-|---|---|---|
-|`async`|`Promise<ReturnType>`|`await`|
-|`coroutine`|`FirstReturnType,func(Next,Params)...`|`yield`|
-|`error<ErrorType>`|`Result<ReturnType,ErrorType>`|`?`|
-
 ## Import System
 
 Similar to python, folders/files represent the `.` seperated import path, but relative imports are *not* supported. Exported values must be marked with `pub`. All imports take the form:
@@ -137,7 +132,7 @@ Similar to python, folders/files represent the `.` seperated import path, but re
 import package.path as local_name
 
 pub type MyStruct struct {
-  id: Int32
+  pub id: I32
 }
 ```
 
@@ -145,7 +140,7 @@ pub type MyStruct struct {
 ## Basic Statements
 ### `if`
 
-`if` is an expression in boring-lang, with the last expression in a block being the return value. If the block ends in a statement rather than an expression, Optional None is returned.
+`if` is an expression in boring-lang, with the last expression in a block being the return value.
 
 ```
 let a = if true {
@@ -156,11 +151,6 @@ let a = if true {
 
 // a == 4
 
-let b = if false {
-  2
-}
-
-// b is an Optional<Int32> with value None.
 ```
 
 Conditions do not require parenthesis and *must* evaluate to the Boolean type.
@@ -231,5 +221,3 @@ let result = match number {
 
 // result = 'bar'
 ```
-
-TODO: yield, lambdas,
