@@ -41,6 +41,7 @@ fn returns_user(): User {
 
 fn get_user_id(): U64 {
     let user = returns_user();
+    user.id = 5;
     return user.id;
 }
 

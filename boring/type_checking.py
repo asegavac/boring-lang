@@ -182,10 +182,17 @@ class TypeChecker:
         changed = False
         if self.with_expression(ctx, assignment_statement.expression):
             changed = True
+        if isinstance(assignment_statement.source, parse.VariableUsage):
+            self.with_variable_usage(ctx, assignment_statement.source)
+        elif isinstance(assignment_statement.source, parse.StructGetter):
+            self.with_struct_getter(ctx, assignment_statement.source)
+        else:
+            assert False
+
         if unify(
             ctx,
             assignment_statement,
-            ctx.environment[assignment_statement.variable_name],
+            assignment_statement.source,
         ):
             changed = True
         if unify(ctx, assignment_statement, assignment_statement.expression):

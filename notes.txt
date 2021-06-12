@@ -37,11 +37,11 @@ TODO:
 * ~Block expression~
 * ~Return keyword~
 * ~Normal assignment~
-* Structs
+* ~Structs~
   * ~Define~
   * ~Literal~
   * ~Getter~
-  * Setter
+  * ~Setter~
 * Methods
 * Traits
 * Generics
