@@ -21,7 +21,7 @@ It's basically a middle-ground of Rust, Golang, Swift, Typescript, and Python. T
 
 ```
 import net.http as http
-import logging as log
+import logging as logging
 import json as json
 
 type ExampleResponse struct {
@@ -30,7 +30,7 @@ type ExampleResponse struct {
   email: Str
 }
 
-async fn handle(req: http.Request, resp: mut http.Response) {
+async fn handle(req: http.Request, resp: mut http.Response): {
   let response_data = ExampleResponse{
     id: 4,
     name: "Steven",
@@ -40,9 +40,10 @@ async fn handle(req: http.Request, resp: mut http.Response) {
   await resp.write(json.encode[ExampleResponse](response_data));
 }
 
-async fn main(args: Vec[Str]) I32 {
+async fn main(args: Vec[Str], os: OS): I32 {
+    let log = logging.new_logger(os.fs());
     let router = http.Router("").add_route("/myroute", handle);
-    let http_server = http.Server("localhost", 8080, router);
+    let http_server = http.Server(os.net(), "localhost", 8080, router);
     let err = await http_server.serve_forever();
     await log.info("error serving: ", err);
     return 1;
@@ -160,9 +161,9 @@ Conditions do not require parenthesis and *must* evaluate to the Boolean type.
 Boring-lang supports `for` and `while` loops, with `for` having an `async` variant. `while` loops require an expression of Boolean type, while `for` loops require an expression that implements the `Iter` or `AIter` traits.
 
 ```
-let mut i = 0
+let mut i = 0;
 while i < 100 {
-  i = i + 1
+  i = i + 1;
   // do something here
 }
 
@@ -184,7 +185,7 @@ while true {
 }
 
 for i in range(100) {
-  continue // do nothing
+  continue; // do nothing
 }
 
 ```
