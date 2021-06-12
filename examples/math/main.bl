@@ -31,3 +31,8 @@ fn unit_function() {
 fn main(): I32 {
     add(4, subtract(5, 2))
 }
+
+
+type User struct {
+    id: U64,
+}

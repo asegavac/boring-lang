@@ -38,14 +38,16 @@ TODO:
 * ~Return keyword~
 * ~Normal assignment~
 * Structs
-  * Define
+  * ~Define~
   * Literal
   * Getter
   * Setter
 * Generics
 * Enums
 * Methods
+* Traits
 * Arrays
 * Strings
-* Traits
+* Lambdas
 * Async
+* Imports

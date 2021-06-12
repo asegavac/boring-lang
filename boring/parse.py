@@ -1,6 +1,6 @@
 import sys
 import enum
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict
 from dataclasses import dataclass, field
 from lark import Lark, Transformer
 
@@ -33,7 +33,7 @@ NEVER_TYPE = "!"
 class FunctionTypeUsage:
     arguments: List[
         "TypeUsage"
-    ]  # Specified if it is a function, this is how you tell if it's a function
+    ]
     return_type: "TypeUsage"
 
 
@@ -98,7 +98,15 @@ class ReturnStatement:
 
 @dataclass
 class Expression:
-    expression: Union[LiteralInt, LiteralFloat, FunctionCall, "Block", ReturnStatement, VariableUsage, Operation]
+    expression: Union[
+        LiteralInt,
+        LiteralFloat,
+        FunctionCall,
+        "Block",
+        ReturnStatement,
+        VariableUsage,
+        Operation,
+    ]
     type: TypeUsage
 
 
@@ -141,8 +149,23 @@ class Function:
 
 
 @dataclass
+class PrimitiveTypeDeclaration:
+    name: str
+
+
+@dataclass
+class StructTypeDeclaration:
+    name: str
+    fields: Dict[str, TypeUsage]
+
+
+TypeDeclaration = Union[StructTypeDeclaration, PrimitiveTypeDeclaration]
+
+
+@dataclass
 class Module:
     functions: List[Function]
+    types: List[TypeDeclaration]
 
 
 boring_grammar = r"""
@@ -212,7 +235,14 @@ boring_grammar = r"""
     function : function_with_return
              | function_without_return
 
-    module : (function)*
+
+    struct_definition_field : identifier ":" type_usage
+
+    struct_type_declaration : "type" identifier "struct" "{" (struct_definition_field ",")* "}"
+
+    type_declaration : struct_type_declaration
+
+    module : (function|type_declaration)*
 
     %import common.CNAME
     %import common.SIGNED_INT
@@ -260,7 +290,9 @@ class TreeToBoring(Transformer):
 
     def return_statement(self, return_expression) -> ReturnStatement:
         (return_expression,) = return_expression
-        return ReturnStatement(source=return_expression, type=DataTypeUsage(name=NEVER_TYPE))
+        return ReturnStatement(
+            source=return_expression, type=DataTypeUsage(name=NEVER_TYPE)
+        )
 
     def function_call(self, call) -> FunctionCall:
         return FunctionCall(source=call[0], arguments=call[1:], type=UnknownTypeUsage())
@@ -371,8 +403,28 @@ class TreeToBoring(Transformer):
         (function,) = function
         return function
 
-    def module(self, functions) -> Module:
-        return Module(functions=functions)
+    def struct_definition_field(self, struct_definition_field):
+        (field, type_usage) = struct_definition_field
+        return (field, type_usage)
+
+    def struct_type_declaration(self, struct_type_declaration) -> StructTypeDeclaration:
+        name = struct_type_declaration[0]
+        fields = {key: value for (key, value) in struct_type_declaration[1:]}
+        return StructTypeDeclaration(name=name, fields=fields)
+
+    def type_declaration(self, type_declaration):
+        (type_declaration,) = type_declaration
+        return type_declaration
+
+    def module(self, module_items) -> Module:
+        functions = []
+        types = []
+        for item in module_items:
+            if isinstance(item, Function):
+                functions.append(item)
+            else:
+                types.append(item)
+        return Module(functions=functions, types=types)
 
 
 boring_parser = Lark(boring_grammar, start="module", lexer="standard")

@@ -1,32 +1,34 @@
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Tuple
 
 
 from boring import parse, typedefs
 
 
-Identified = Union[parse.LetStatement, parse.Function, parse.VariableDeclaration]
+Identified = Union[
+    parse.LetStatement, parse.Function, parse.VariableDeclaration, parse.TypeDeclaration
+]
 Environment = Dict[str, Identified]
-TypeEnvironment = Dict[str, typedefs.TypeDef]
+
 
 @dataclass
 class Context:
     environment: Environment
-    type_environment: TypeEnvironment
     current_function: Optional[parse.Function]
 
     def copy(self):
-        return Context(self.environment.copy(), self.type_environment.copy(), self.current_function)
+        return Context(self.environment.copy(), self.current_function)
 
 
 def unify(ctx: Context, first, second) -> bool:
+    changed: bool
     result, changed = type_compare(ctx, first.type, second.type)
     first.type = result
     second.type = result
     return changed
 
 
-def type_compare(ctx: Context, first, second) -> (parse.TypeUsage, bool):
+def type_compare(ctx: Context, first: parse.TypeUsage, second: parse.TypeUsage) -> Tuple[parse.TypeUsage, bool]:
     print(first, second)
     if isinstance(first, parse.UnknownTypeUsage):
         if not isinstance(second, parse.UnknownTypeUsage):
@@ -41,8 +43,18 @@ def type_compare(ctx: Context, first, second) -> (parse.TypeUsage, bool):
                 second, parse.DataTypeUsage
             ):
                 assert second == first
-                assert first.name in ctx.type_environment
-                assert second.name in ctx.type_environment
+                assert first.name in ctx.environment  # TODO: validate that it is a type
+                assert isinstance(
+                    ctx.environment[first.name], parse.StructTypeDeclaration
+                ) or isinstance(
+                    ctx.environment[first.name], parse.PrimitiveTypeDeclaration
+                )
+                assert second.name in ctx.environment
+                assert isinstance(
+                    ctx.environment[second.name], parse.StructTypeDeclaration
+                ) or isinstance(
+                    ctx.environment[second.name], parse.PrimitiveTypeDeclaration
+                )
                 return first, False
             elif isinstance(first, parse.FunctionTypeUsage) and isinstance(
                 second, parse.FunctionTypeUsage
@@ -64,8 +76,22 @@ def type_compare(ctx: Context, first, second) -> (parse.TypeUsage, bool):
                 assert False, f"mismatched types {first}, {second}"
 
 
+def assert_exists(ctx: Context, type: parse.TypeUsage):
+    if isinstance(type, parse.DataTypeUsage):
+        assert type.name in ctx.environment
+    elif isinstance(type, parse.FunctionTypeUsage):
+        assert_exists(ctx, type.return_type)
+        for argument in type.arguments:
+            assert_exists(ctx, argument)
+
 class TypeChecker:
     def with_module(self, ctx: Context, module: parse.Module) -> bool:
+        for type_declaration in module.types:
+            ctx.environment[type_declaration.name] = type_declaration
+        for type_declaration in module.types:
+            if isinstance(type_declaration, parse.StructTypeDeclaration):
+                for name, field in type_declaration.fields.items():
+                    assert_exists(ctx, field)
         for function in module.functions:
             ctx.environment[function.name] = function
         changed = False
@@ -83,8 +109,13 @@ class TypeChecker:
 
         changed = self.with_block(function_ctx, function.block)
 
-        if not (isinstance(function.block.type, parse.DataTypeUsage) and function.block.type.name == parse.NEVER_TYPE):
-            type, compare_changed = type_compare(function_ctx, function.block.type, function.type.return_type)
+        if not (
+            isinstance(function.block.type, parse.DataTypeUsage)
+            and function.block.type.name == parse.NEVER_TYPE
+        ):
+            type, compare_changed = type_compare(
+                function_ctx, function.block.type, function.type.return_type
+            )
             function.block.type = type
             function.type.return_type = type
             if compare_changed is True:
@@ -105,23 +136,15 @@ class TypeChecker:
         if isinstance(final, parse.LetStatement):
             if isinstance(block.type, parse.UnknownTypeUsage):
                 changed = True
-                block.type = parse.DataTypeUsage(
-                    name=parse.UNIT_TYPE
-                )
+                block.type = parse.DataTypeUsage(name=parse.UNIT_TYPE)
             else:
-                assert block.type == parse.DataTypeUsage(
-                    name=parse.UNIT_TYPE
-                )
+                assert block.type == parse.DataTypeUsage(name=parse.UNIT_TYPE)
         elif isinstance(final, parse.ReturnStatement):
             if isinstance(block.type, parse.UnknownTypeUsage):
                 changed = True
-                block.type = parse.DataTypeUsage(
-                    name=parse.NEVER_TYPE
-                )
+                block.type = parse.DataTypeUsage(name=parse.NEVER_TYPE)
             else:
-                assert block.type == parse.DataTypeUsage(
-                    name=parse.NEVER_TYPE
-                )
+                assert block.type == parse.DataTypeUsage(name=parse.NEVER_TYPE)
         elif isinstance(final, parse.Expression):
             if unify(block_ctx, final, block):
                 changed = True
@@ -156,7 +179,11 @@ class TypeChecker:
         changed = False
         if self.with_expression(ctx, assignment_statement.expression):
             changed = True
-        if unify(ctx, assignment_statement, ctx.environment[assignment_statement.variable_name]):
+        if unify(
+            ctx,
+            assignment_statement,
+            ctx.environment[assignment_statement.variable_name],
+        ):
             changed = True
         if unify(ctx, assignment_statement, assignment_statement.expression):
             changed = True
@@ -168,8 +195,15 @@ class TypeChecker:
         changed = self.with_expression(ctx, return_statement.source)
 
         # Doesn't match on an unreachable return
-        if not (isinstance(return_statement.source.type, parse.DataTypeUsage) and return_statement.source.type.name == parse.NEVER_TYPE):
-            type, compare_changed = type_compare(ctx, return_statement.source.type, ctx.current_function.type.return_type)
+        if not (
+            isinstance(return_statement.source.type, parse.DataTypeUsage)
+            and return_statement.source.type.name == parse.NEVER_TYPE
+        ):
+            assert isinstance(ctx.current_function, parse.Function)
+            assert isinstance(ctx.current_function.type, parse.FunctionTypeUsage)
+            type, compare_changed = type_compare(
+                ctx, return_statement.source.type, ctx.current_function.type.return_type
+            )
             return_statement.source.type = type
             ctx.current_function.type.return_type = type
             if compare_changed is True:
@@ -245,6 +279,7 @@ class TypeChecker:
             if self.with_expression(ctx, argument):
                 changed = True
 
+        assert isinstance(function_call.source.type, parse.FunctionTypeUsage)
         return_type, return_changed = type_compare(
             ctx, function_call.type, function_call.source.type.return_type
         )
@@ -265,14 +300,18 @@ class TypeChecker:
                 changed = True
         return changed
 
-    def with_literal_float(self, ctx: Context, literal_float: parse.LiteralFloat) -> bool:
+    def with_literal_float(
+        self, ctx: Context, literal_float: parse.LiteralFloat
+    ) -> bool:
         floats = ["F32", "F64", "F128"]
         if not isinstance(literal_float.type, parse.UnknownTypeUsage):
+            assert isinstance(literal_float.type, parse.DataTypeUsage)
             assert literal_float.type.name in floats, f"{literal_float.type}"
         return False
 
     def with_literal_int(self, ctx: Context, literal_int: parse.LiteralInt) -> bool:
         ints = ["I8", "I16", "I32", "I64", "I128", "U8", "U16", "U32", "U64", "U128"]
         if not isinstance(literal_int.type, parse.UnknownTypeUsage):
+            assert isinstance(literal_int.type, parse.DataTypeUsage)
             assert literal_int.type.name in ints, f"{literal_int.type}"
         return False
