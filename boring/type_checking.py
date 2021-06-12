@@ -224,6 +224,11 @@ class TypeChecker:
             if unify(ctx, subexpression, expression):
                 changed = True
             return changed
+        if isinstance(subexpression, parse.LiteralStruct):
+            changed = self.with_literal_struct(ctx, subexpression)
+            if unify(ctx, subexpression, expression):
+                changed = True
+            return changed
         if isinstance(subexpression, parse.FunctionCall):
             changed = self.with_function_call(ctx, subexpression)
             if unify(ctx, subexpression, expression):
@@ -315,3 +320,18 @@ class TypeChecker:
             assert isinstance(literal_int.type, parse.DataTypeUsage)
             assert literal_int.type.name in ints, f"{literal_int.type}"
         return False
+
+    def with_literal_struct(self, ctx: Context, literal_struct: parse.LiteralStruct) -> bool:
+        assert literal_struct.name in ctx.environment
+        struct_declaration = ctx.environment[literal_struct.name]
+        assert isinstance(struct_declaration, parse.StructTypeDeclaration)
+        changed = False
+        for name, field_type in struct_declaration.fields.items():
+            assert name in literal_struct.fields
+            if self.with_expression(ctx, literal_struct.fields[name]):
+                changed = True
+            result_type, field_changed = type_compare(ctx, field_type, literal_struct.fields[name].type)
+            if field_changed:
+                literal_struct.fields[name].type = result_type
+                changed = True
+        return changed

@@ -68,6 +68,12 @@ class LiteralFloat:
     value: float
     type: TypeUsage
 
+@dataclass
+class LiteralStruct:
+    name: str
+    fields: Dict[str, "Expression"]
+    type: TypeUsage
+
 
 @dataclass
 class FunctionCall:
@@ -101,6 +107,7 @@ class Expression:
     expression: Union[
         LiteralInt,
         LiteralFloat,
+        LiteralStruct,
         FunctionCall,
         "Block",
         ReturnStatement,
@@ -174,9 +181,12 @@ boring_grammar = r"""
     mult : "*"
     div : "/"
 
+    identifier : CNAME
     literal_float : SIGNED_FLOAT
     literal_int : SIGNED_INT
-    identifier : CNAME
+
+    literal_struct_field : identifier ":" expression
+    literal_struct : identifier "{" (literal_struct_field ",")* "}"
 
     function_call : expression "(" [expression ("," expression)*] ")"
 
@@ -199,6 +209,7 @@ boring_grammar = r"""
 
     term : literal_int
          | literal_float
+         | literal_struct
          | variable_usage
          | function_call
          | "(" expression ")"
@@ -279,6 +290,15 @@ class TreeToBoring(Transformer):
     def literal_float(self, f) -> LiteralFloat:
         (f,) = f
         return LiteralFloat(value=float(f), type=UnknownTypeUsage())
+
+    def literal_struct_field(self, lsf):
+        (name, expression) = lsf
+        return name, expression
+
+    def literal_struct(self, literal_struct) -> LiteralStruct:
+        name = literal_struct[0]
+        fields = {key: value for (key, value) in literal_struct[1:]}
+        return LiteralStruct(name=name, fields=fields, type=DataTypeUsage(name=name))
 
     def identifier(self, i) -> str:
         (i,) = i

@@ -39,7 +39,7 @@ TODO:
 * ~Normal assignment~
 * Structs
   * ~Define~
-  * Literal
+  * ~Literal~
   * Getter
   * Setter
 * Generics
