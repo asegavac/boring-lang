@@ -28,16 +28,21 @@ fn unit_function() {
   let a: I32 = 4;
 }
 
+fn main(): I32 {
+    add(4, subtract(5, 2))
+}
+
+
 fn returns_user(): User {
     return User{
         id: 4,
     };
 }
 
-fn main(): I32 {
-    add(4, subtract(5, 2))
+fn get_user_id(): U64 {
+    let user = returns_user();
+    return user.id;
 }
-
 
 type User struct {
     id: U64,

@@ -31,9 +31,7 @@ NEVER_TYPE = "!"
 
 @dataclass
 class FunctionTypeUsage:
-    arguments: List[
-        "TypeUsage"
-    ]
+    arguments: List["TypeUsage"]
     return_type: "TypeUsage"
 
 
@@ -68,6 +66,7 @@ class LiteralFloat:
     value: float
     type: TypeUsage
 
+
 @dataclass
 class LiteralStruct:
     name: str
@@ -79,6 +78,13 @@ class LiteralStruct:
 class FunctionCall:
     source: "Expression"
     arguments: List["Expression"]
+    type: TypeUsage
+
+
+@dataclass
+class StructGetter:
+    source: "Expression"
+    attribute: str
     type: TypeUsage
 
 
@@ -109,6 +115,7 @@ class Expression:
         LiteralFloat,
         LiteralStruct,
         FunctionCall,
+        StructGetter,
         "Block",
         ReturnStatement,
         VariableUsage,
@@ -190,6 +197,8 @@ boring_grammar = r"""
 
     function_call : expression "(" [expression ("," expression)*] ")"
 
+    struct_getter : expression "." identifier
+
     add_expression : expression plus factor
     sub_expression : expression minus factor
     mult_expression : expression mult term
@@ -212,6 +221,7 @@ boring_grammar = r"""
          | literal_struct
          | variable_usage
          | function_call
+         | struct_getter
          | "(" expression ")"
          | block
 
@@ -316,6 +326,10 @@ class TreeToBoring(Transformer):
 
     def function_call(self, call) -> FunctionCall:
         return FunctionCall(source=call[0], arguments=call[1:], type=UnknownTypeUsage())
+
+    def struct_getter(self, getter) -> StructGetter:
+        expression, attribute = getter
+        return StructGetter(expression, attribute, UnknownTypeUsage())
 
     def add_expression(self, ae) -> Operation:
         return Operation(left=ae[0], op=ae[1], right=ae[2], type=UnknownTypeUsage())

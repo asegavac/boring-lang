@@ -40,12 +40,12 @@ TODO:
 * Structs
   * ~Define~
   * ~Literal~
-  * Getter
+  * ~Getter~
   * Setter
-* Generics
-* Enums
 * Methods
 * Traits
+* Generics
+* Enums
 * Arrays
 * Strings
 * Lambdas

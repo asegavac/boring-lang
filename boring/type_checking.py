@@ -28,7 +28,9 @@ def unify(ctx: Context, first, second) -> bool:
     return changed
 
 
-def type_compare(ctx: Context, first: parse.TypeUsage, second: parse.TypeUsage) -> Tuple[parse.TypeUsage, bool]:
+def type_compare(
+    ctx: Context, first: parse.TypeUsage, second: parse.TypeUsage
+) -> Tuple[parse.TypeUsage, bool]:
     print(first, second)
     if isinstance(first, parse.UnknownTypeUsage):
         if not isinstance(second, parse.UnknownTypeUsage):
@@ -83,6 +85,7 @@ def assert_exists(ctx: Context, type: parse.TypeUsage):
         assert_exists(ctx, type.return_type)
         for argument in type.arguments:
             assert_exists(ctx, argument)
+
 
 class TypeChecker:
     def with_module(self, ctx: Context, module: parse.Module) -> bool:
@@ -234,6 +237,11 @@ class TypeChecker:
             if unify(ctx, subexpression, expression):
                 changed = True
             return changed
+        if isinstance(subexpression, parse.StructGetter):
+            changed = self.with_struct_getter(ctx, subexpression)
+            if unify(ctx, subexpression, expression):
+                changed = True
+            return changed
         if isinstance(subexpression, parse.Block):
             changed = self.with_block(ctx, subexpression)
             if unify(ctx, subexpression, expression):
@@ -305,6 +313,22 @@ class TypeChecker:
                 changed = True
         return changed
 
+    def with_struct_getter(
+        self, ctx: Context, struct_getter: parse.StructGetter
+    ) -> bool:
+        changed = self.with_expression(ctx, struct_getter.source)
+        assert isinstance(struct_getter.source.type, parse.DataTypeUsage)
+        struct_declaration = ctx.environment[struct_getter.source.type.name]
+        assert isinstance(struct_declaration, parse.StructTypeDeclaration)
+        assert struct_getter.attribute in struct_declaration.fields
+        result_type, changed_getter = type_compare(
+            ctx, struct_getter.type, struct_declaration.fields[struct_getter.attribute]
+        )
+        if changed_getter:
+            changed = True
+            struct_getter.type = result_type
+        return changed
+
     def with_literal_float(
         self, ctx: Context, literal_float: parse.LiteralFloat
     ) -> bool:
@@ -321,7 +345,9 @@ class TypeChecker:
             assert literal_int.type.name in ints, f"{literal_int.type}"
         return False
 
-    def with_literal_struct(self, ctx: Context, literal_struct: parse.LiteralStruct) -> bool:
+    def with_literal_struct(
+        self, ctx: Context, literal_struct: parse.LiteralStruct
+    ) -> bool:
         assert literal_struct.name in ctx.environment
         struct_declaration = ctx.environment[literal_struct.name]
         assert isinstance(struct_declaration, parse.StructTypeDeclaration)
@@ -330,7 +356,9 @@ class TypeChecker:
             assert name in literal_struct.fields
             if self.with_expression(ctx, literal_struct.fields[name]):
                 changed = True
-            result_type, field_changed = type_compare(ctx, field_type, literal_struct.fields[name].type)
+            result_type, field_changed = type_compare(
+                ctx, field_type, literal_struct.fields[name].type
+            )
             if field_changed:
                 literal_struct.fields[name].type = result_type
                 changed = True
