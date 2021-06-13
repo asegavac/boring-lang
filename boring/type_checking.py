@@ -90,7 +90,8 @@ def assert_exists(ctx: Context, type: parse.TypeUsage):
 class TypeChecker:
     def with_module(self, ctx: Context, module: parse.Module) -> bool:
         for type_declaration in module.types:
-            ctx.environment[type_declaration.name] = type_declaration
+            if isinstance(type_declaration, parse.StructTypeDeclaration):
+                ctx.environment[type_declaration.name] = type_declaration
         for type_declaration in module.types:
             if isinstance(type_declaration, parse.StructTypeDeclaration):
                 for name, field in type_declaration.fields.items():
@@ -361,8 +362,9 @@ class TypeChecker:
     def with_literal_struct(
         self, ctx: Context, literal_struct: parse.LiteralStruct
     ) -> bool:
-        assert literal_struct.name in ctx.environment, literal_struct.name
-        struct_declaration = ctx.environment[literal_struct.name]
+        assert isinstance(literal_struct.type, parse.DataTypeUsage)
+        assert literal_struct.type.name in ctx.environment, literal_struct.type.name
+        struct_declaration = ctx.environment[literal_struct.type.name]
         assert isinstance(struct_declaration, parse.StructTypeDeclaration)
         changed = False
         for name, field_type in struct_declaration.fields.items():

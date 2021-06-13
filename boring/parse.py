@@ -69,7 +69,6 @@ class LiteralFloat:
 
 @dataclass
 class LiteralStruct:
-    name: str
     fields: Dict[str, "Expression"]
     type: TypeUsage
 
@@ -205,7 +204,7 @@ boring_grammar = r"""
     literal_int : SIGNED_INT
 
     literal_struct_field : identifier ":" expression
-    literal_struct : identifier "{" (literal_struct_field ",")* "}"
+    literal_struct : data_type "{" (literal_struct_field ",")* "}"
 
     function_call : expression "(" [expression ("," expression)*] ")"
 
@@ -324,9 +323,9 @@ class TreeToBoring(Transformer):
         return name, expression
 
     def literal_struct(self, literal_struct) -> LiteralStruct:
-        name = literal_struct[0]
+        data_type = literal_struct[0]
         fields = {key: value for (key, value) in literal_struct[1:]}
-        return LiteralStruct(name=name, fields=fields, type=DataTypeUsage(name=name))
+        return LiteralStruct(fields=fields, type=data_type)
 
     def identifier(self, i) -> str:
         (i,) = i
