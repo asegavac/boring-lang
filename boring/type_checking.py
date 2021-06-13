@@ -97,7 +97,13 @@ class TypeChecker:
                     assert_exists(ctx, field)
         for function in module.functions:
             ctx.environment[function.name] = function
+
         changed = False
+        for impl in module.impls:
+            for function in impl.functions:
+                if self.with_function(ctx, function):
+                    changed = True
+
         for function in module.functions:
             if self.with_function(ctx, function):
                 changed = True
@@ -355,7 +361,7 @@ class TypeChecker:
     def with_literal_struct(
         self, ctx: Context, literal_struct: parse.LiteralStruct
     ) -> bool:
-        assert literal_struct.name in ctx.environment
+        assert literal_struct.name in ctx.environment, literal_struct.name
         struct_declaration = ctx.environment[literal_struct.name]
         assert isinstance(struct_declaration, parse.StructTypeDeclaration)
         changed = False

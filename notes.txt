@@ -42,7 +42,10 @@ TODO:
   * ~Literal~
   * ~Getter~
   * ~Setter~
+* ~Type Aliases~
 * Methods
+  * ~Declaration~
+  * Use
 * Traits
 * Generics
 * Enums
@@ -51,3 +54,5 @@ TODO:
 * Lambdas
 * Async
 * Imports
+* Visibility
+* Const / Mut

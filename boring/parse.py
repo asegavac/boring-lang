@@ -173,13 +173,25 @@ class StructTypeDeclaration:
     fields: Dict[str, TypeUsage]
 
 
-TypeDeclaration = Union[StructTypeDeclaration, PrimitiveTypeDeclaration]
+@dataclass
+class AliasTypeDeclaration:
+    new: DataTypeUsage
+    old: TypeUsage
+
+
+TypeDeclaration = Union[StructTypeDeclaration, PrimitiveTypeDeclaration, AliasTypeDeclaration]
+
+@dataclass
+class Impl:
+    struct: str
+    functions: List[Function]
 
 
 @dataclass
 class Module:
     functions: List[Function]
     types: List[TypeDeclaration]
+    impls: List[Impl]
 
 
 boring_grammar = r"""
@@ -262,9 +274,14 @@ boring_grammar = r"""
 
     struct_type_declaration : "type" identifier "struct" "{" (struct_definition_field ",")* "}"
 
-    type_declaration : struct_type_declaration
+    type_alias_declaration : "type" identifier "=" type_usage ";"
 
-    module : (function|type_declaration)*
+    type_declaration : struct_type_declaration
+                     | type_alias_declaration
+
+    impl : "impl" identifier "{" function* "}"
+
+    module : (function|type_declaration|impl)*
 
     %import common.CNAME
     %import common.SIGNED_INT
@@ -447,19 +464,29 @@ class TreeToBoring(Transformer):
         fields = {key: value for (key, value) in struct_type_declaration[1:]}
         return StructTypeDeclaration(name=name, fields=fields)
 
+    def type_alias_declaration(self, type_alias_declaration) -> AliasTypeDeclaration:
+        (name, existing) = type_alias_declaration
+        return AliasTypeDeclaration(new=DataTypeUsage(name), old=type_alias_declaration)
+
     def type_declaration(self, type_declaration):
         (type_declaration,) = type_declaration
         return type_declaration
 
+    def impl(self, impl) -> Impl:
+        return Impl(struct=impl[0], functions=impl[1:])
+
     def module(self, module_items) -> Module:
         functions = []
         types = []
+        impls = []
         for item in module_items:
             if isinstance(item, Function):
                 functions.append(item)
+            elif isinstance(item, Impl):
+                impls.append(item)
             else:
                 types.append(item)
-        return Module(functions=functions, types=types)
+        return Module(functions=functions, types=types, impls=impls)
 
 
 boring_parser = Lark(boring_grammar, start="module", lexer="standard")

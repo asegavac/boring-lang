@@ -2,6 +2,7 @@ import sys
 from typing import List
 from boring.parse import boring_parser, TreeToBoring, pretty_print
 from boring.type_checking import TypeChecker, Context
+from boring.type_alias_resolution import TypeAliasResolver, Context as AliasContex
 from boring import typedefs, parse
 
 builtins = {
@@ -28,6 +29,9 @@ if __name__ == "__main__":
         # print(tree)
         result = TreeToBoring().transform(tree)
         # pretty_print(result)
+        alias_resolver = TypeAliasResolver()
+        alias_resolver.with_module(AliasContex([]), result)
+        pretty_print(result)
         type_checker = TypeChecker()
         while type_checker.with_module(Context(builtins, None), result):
             print("loop")

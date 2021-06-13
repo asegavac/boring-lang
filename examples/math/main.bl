@@ -48,3 +48,15 @@ fn get_user_id(): U64 {
 type User struct {
     id: U64,
 }
+
+impl User {
+    fn new(id: U64): Self {
+        return Self{
+            id: id,
+        };
+    }
+
+    fn get_id(self: Self): U64 {
+        return self.id;
+    }
+}
