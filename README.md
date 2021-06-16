@@ -158,6 +158,10 @@ pub fn cancel_middleware[Ctx: Cancel](handler: HTTPRequest[Ctx]): HTTPRequest {
 
 for the above examples, you would pass a context type that implements all three traits.
 
+## Sandboxing
+
+Unlike many other programming languages, boringlang's `main` function take in two arguments, a vector of command line arguments, and a reference to the OS which is the program's only link to the outside world. To open a file in boringlang, you cannot just open it anywhere, you *must* call `os.fs().open("path")`. All `os.whatever()` methods return an interface for interacting with that part of the OS, such as `fs`, `net`, `datetime`, and `syscall`. Because this is the only way to interact with the world outside of the program, this means that any IO the program does can be trivially mocked for testing, and that all operations the program can perform are sandboxed. If a function doesn't require a reference to the `FS` trait, you can be sure it doesn't interact with the file system.
+
 ## Import System
 
 Similar to python, folders/files represent the `.` seperated import path, but relative imports are *not* supported. Exported values must be marked with `pub`. All imports take the form:
