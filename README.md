@@ -66,8 +66,8 @@ type ExampleResponse struct {
 async fn handle(req: http.Request, resp: mut http.Response): {
   let response_data = ExampleResponse{
     id: 4,
-    name: "Steven",
-    email: "swerbenjagermanjensen@example.com"
+    name: "Andrew",
+    email: "andrew@example.com"
   };
   await resp.set_status(200);
   await resp.write(json.encode[ExampleResponse](response_data));
