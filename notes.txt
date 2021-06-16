@@ -30,29 +30,3 @@ class TypeUsage:
 
 if / match return never if all blocks return never;
 blocks propagate never except at the function level;
-
-
-TODO:
-* ~Float Literals~
-* ~Block expression~
-* ~Return keyword~
-* ~Normal assignment~
-* ~Structs~
-  * ~Define~
-  * ~Literal~
-  * ~Getter~
-  * ~Setter~
-* ~Type Aliases~
-* Methods
-  * ~Declaration~
-  * Use
-* Traits
-* Generics
-* Enums
-* Arrays
-* Strings
-* Lambdas
-* Async
-* Imports
-* Visibility
-* Const / Mut
