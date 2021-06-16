@@ -225,7 +225,7 @@ for i in range(100) {
 
 `with` and `async with` blocks are similar to the python statement with the same name. But unlike the python version, `with` blocks are expressions. `with` blocks take in an expression that implements the `With` or `AWith` trait, and execute a block that *may* return a result (non-result returns are assumed success).
 
-```
+```rust
 // commits on success, aborts on error.
 // transation.aexit may just return an error as a pass-through after aborting,
 // but it may also transform it into another error adding context.
@@ -243,7 +243,7 @@ return async with db.transation(ctx) as t {
 
 `match` expressions provide pattern matching, similar to a `C` switch statement.
 
-```
+```rust
 let number = 3;
 let result = match number {
   1 => 'foo',
