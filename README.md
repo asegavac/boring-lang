@@ -47,6 +47,8 @@ This language is under active development, progress will be marked here as the l
 - [ ] Visibility
 - [ ] Const / Mut
 
+This project is actively looking for contributors, so if you're interested in programming language design or have experience working with LLVM, don't hesitate to contact.
+
 
 ## Http Server Example
 
