@@ -15,9 +15,12 @@ Environment = Dict[str, Identified]
 class Context:
     environment: Environment
     current_function: Optional[parse.Function]
+    current_module: parse.Module
 
     def copy(self):
-        return Context(self.environment.copy(), self.current_function)
+        return Context(
+            self.environment.copy(), self.current_function, self.current_module
+        )
 
 
 def unify(ctx: Context, first, second) -> bool:
@@ -26,6 +29,10 @@ def unify(ctx: Context, first, second) -> bool:
     first.type = result
     second.type = result
     return changed
+
+
+def function_to_method(type: parse.FunctionTypeUsage) -> parse.FunctionTypeUsage:
+    return parse.FunctionTypeUsage(type.arguments[1:], type.return_type)
 
 
 def type_compare(
@@ -334,10 +341,30 @@ class TypeChecker:
         assert isinstance(struct_getter.source.type, parse.DataTypeUsage)
         struct_declaration = ctx.environment[struct_getter.source.type.name]
         assert isinstance(struct_declaration, parse.StructTypeDeclaration)
-        assert struct_getter.attribute in struct_declaration.fields
-        result_type, changed_getter = type_compare(
-            ctx, struct_getter.type, struct_declaration.fields[struct_getter.attribute]
-        )
+        if struct_getter.attribute in struct_declaration.fields:
+            result_type, changed_getter = type_compare(
+                ctx,
+                struct_getter.type,
+                struct_declaration.fields[struct_getter.attribute],
+            )
+        else:  # check methods and traits
+            impls = []
+            for module_impl in ctx.current_module.impls:
+                if module_impl.struct == struct_getter.source.type.name:
+                    impls.append(module_impl)
+            assert len(impls) != 0
+            found = False
+            for impl in impls:
+                for function in impl.functions:
+                    if function.name == struct_getter.attribute:
+                        assert isinstance(function.type, parse.FunctionTypeUsage)
+                        result_type, changed_getter = type_compare(
+                            ctx, struct_getter.type, function_to_method(function.type)
+                        )
+                        found = True
+                        break
+            assert found, "Method not found"
+
         if changed_getter:
             changed = True
             struct_getter.type = result_type

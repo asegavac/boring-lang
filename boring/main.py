@@ -33,7 +33,7 @@ if __name__ == "__main__":
         alias_resolver.with_module(AliasContex([]), result)
         # pretty_print(result)
         type_checker = TypeChecker()
-        while type_checker.with_module(Context(builtins, None), result):
+        while type_checker.with_module(Context(builtins, None, result), result):
             print("loop")
         # type_checker.with_module({}, result)
         pretty_print(result)

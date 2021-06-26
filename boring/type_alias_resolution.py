@@ -18,7 +18,7 @@ def resolve_type(ctx: Context, type: parse.DataTypeUsage) -> parse.TypeUsage:
         changed = False
         if isinstance(result, parse.DataTypeUsage):
             for type_alias in ctx.type_aliases:
-                if type_alias.new.name == result.name: # type: ignore
+                if type_alias.new.name == result.name:  # type: ignore
                     result = type_alias.old
                     changed = True
         else:
@@ -32,11 +32,10 @@ def process_type(ctx: Context, type: parse.TypeUsage) -> parse.TypeUsage:
     elif isinstance(type, parse.FunctionTypeUsage):
         return parse.FunctionTypeUsage(
             return_type=process_type(ctx, type.return_type),
-            arguments=[process_type(ctx, argument) for argument in type.arguments]
+            arguments=[process_type(ctx, argument) for argument in type.arguments],
         )
     else:
         return type
-
 
 
 class TypeAliasResolver:
@@ -48,11 +47,18 @@ class TypeAliasResolver:
         for type_declaration in module.types:
             if isinstance(type_declaration, parse.StructTypeDeclaration):
                 for field in type_declaration.fields:
-                    type_declaration.fields[field] = process_type(ctx, type_declaration.fields[field])
+                    type_declaration.fields[field] = process_type(
+                        ctx, type_declaration.fields[field]
+                    )
 
         for impl in module.impls:
             impl_ctx = ctx.copy()
-            impl_ctx.type_aliases.append(parse.AliasTypeDeclaration(new=parse.DataTypeUsage("Self"), old=parse.DataTypeUsage(impl.struct)))
+            impl_ctx.type_aliases.append(
+                parse.AliasTypeDeclaration(
+                    new=parse.DataTypeUsage("Self"),
+                    old=parse.DataTypeUsage(impl.struct),
+                )
+            )
             for function in impl.functions:
                 self.with_function(impl_ctx, function)
 
@@ -88,9 +94,7 @@ class TypeAliasResolver:
         else:
             assert False
 
-    def with_let_statement(
-        self, ctx: Context, let_statement: parse.LetStatement
-    ):
+    def with_let_statement(self, ctx: Context, let_statement: parse.LetStatement):
         self.with_expression(ctx, let_statement.expression)
         let_statement.type = process_type(ctx, let_statement.type)
 
@@ -140,9 +144,7 @@ class TypeAliasResolver:
             assert False
         return
 
-    def with_variable_usage(
-        self, ctx: Context, variable_usage: parse.VariableUsage
-    ):
+    def with_variable_usage(self, ctx: Context, variable_usage: parse.VariableUsage):
         variable_usage.type = process_type(ctx, variable_usage.type)
 
     def with_operation(self, ctx: Context, operation: parse.Operation):
@@ -151,25 +153,19 @@ class TypeAliasResolver:
         operation.type = process_type(ctx, operation.type)
         return
 
-    def with_function_call(
-        self, ctx: Context, function_call: parse.FunctionCall
-    ):
+    def with_function_call(self, ctx: Context, function_call: parse.FunctionCall):
         self.with_expression(ctx, function_call.source)
         for argument in function_call.arguments:
             self.with_expression(ctx, argument)
         function_call.type = process_type(ctx, function_call.type)
         return
 
-    def with_struct_getter(
-        self, ctx: Context, struct_getter: parse.StructGetter
-    ):
+    def with_struct_getter(self, ctx: Context, struct_getter: parse.StructGetter):
         self.with_expression(ctx, struct_getter.source)
         struct_getter.type = process_type(ctx, struct_getter.type)
         return
 
-    def with_literal_float(
-        self, ctx: Context, literal_float: parse.LiteralFloat
-    ):
+    def with_literal_float(self, ctx: Context, literal_float: parse.LiteralFloat):
         literal_float.type = process_type(ctx, literal_float.type)
         return
 
@@ -177,9 +173,7 @@ class TypeAliasResolver:
         literal_int.type = process_type(ctx, literal_int.type)
         return
 
-    def with_literal_struct(
-        self, ctx: Context, literal_struct: parse.LiteralStruct
-    ):
+    def with_literal_struct(self, ctx: Context, literal_struct: parse.LiteralStruct):
         for name, expression in literal_struct.fields.items():
             self.with_expression(ctx, expression)
         literal_struct.type = process_type(ctx, literal_struct.type)

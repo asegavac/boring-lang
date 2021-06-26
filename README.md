@@ -29,9 +29,9 @@ This language is under active development, progress will be marked here as the l
   - [x] Getter
   - [x] Setter
 - [x] Type Aliases
-- [ ] Methods
+- [x] Methods
   - [x] Declaration
-  - [ ] Use
+  - [x] Use
 - [ ] Traits
 - [ ] Generics
   - [ ] Basic

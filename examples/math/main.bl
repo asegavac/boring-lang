@@ -45,6 +45,10 @@ fn get_user_id(): U64 {
     return user.id;
 }
 
+fn use_method(user: User): U64 {
+    return user.get_id();
+}
+
 type User struct {
     id: U64,
 }

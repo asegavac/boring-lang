@@ -178,7 +178,10 @@ class AliasTypeDeclaration:
     old: TypeUsage
 
 
-TypeDeclaration = Union[StructTypeDeclaration, PrimitiveTypeDeclaration, AliasTypeDeclaration]
+TypeDeclaration = Union[
+    StructTypeDeclaration, PrimitiveTypeDeclaration, AliasTypeDeclaration
+]
+
 
 @dataclass
 class Impl:
