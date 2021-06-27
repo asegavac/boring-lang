@@ -54,28 +54,28 @@ This project is actively looking for contributors, so if you're interested in pr
 ## Http Server Example
 
 ```rust
-import net.http as http
-import logging as logging
-import json as json
+import net.http as http;
+import logging as logging;
+import json as json;
 
 type ExampleResponse struct {
-  id: I32
-  name: Str
-  email: Str
+  id: I32,
+  name: Str,
+  email: Str,
 }
 
 async fn handle(req: http.Request, resp: mut http.Response): {
   let response_data = ExampleResponse{
     id: 4,
     name: "Andrew",
-    email: "andrew@example.com"
+    email: "andrew@example.com",
   };
   await resp.set_status(200);
   await resp.write(json.encode[ExampleResponse](response_data));
 }
 
 async fn main(args: Vec[Str], os: OS): I32 {
-    let log = logging.new_logger(os.fs());
+    let log = logging.new_logger(os.console.stdout());
     let router = http.Router("").add_route("/myroute", handle);
     let http_server = http.Server(os.net(), "localhost", 8080, router);
     let err = await http_server.serve_forever();
@@ -168,10 +168,10 @@ Unlike many other programming languages, boringlang's `main` function take in tw
 Similar to python, folders/files represent the `.` seperated import path, but relative imports are *not* supported. Exported values must be marked with `pub`. All imports take the form:
 
 ```rust
-import package.path as local_name
+import package.path as local_name;
 
 pub type MyStruct struct {
-  pub id: I32
+  pub id: I32,
 }
 ```
 
