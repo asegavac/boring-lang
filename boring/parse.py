@@ -154,9 +154,14 @@ class VariableDeclaration:
 
 @dataclass
 class Function:
+    declaration: "FunctionDeclaration"
+    type: TypeUsage
+
+
+@dataclass
+class FunctionDeclaration:
     name: str
     arguments: List[VariableDeclaration]
-    block: Block
     return_type: TypeUsage
     type: TypeUsage
 
@@ -186,6 +191,27 @@ TypeDeclaration = Union[
 @dataclass
 class Impl:
     struct: str
+    functions: List[Function]
+
+
+@dataclass
+class FunctionDeclartation:
+    name: str
+    arguments: List[VariableDeclaration]
+    return_type: TypeUsage
+    type: TypeUsage
+
+
+@dataclass
+class TraitTypeDeclaration:
+    struct: str
+    functions: List[Function]
+
+
+@dataclass
+class TraitImpl:
+    struct: str
+    trait: str
     functions: List[Function]
 
 
@@ -264,13 +290,14 @@ boring_grammar = r"""
 
     variable_declaration : identifier ":" type_usage
 
-    function_without_return : "fn" identifier "(" [variable_declaration ("," variable_declaration)*] ")" block
+    function_declaration_without_return : "fn" identifier "(" [variable_declaration ("," variable_declaration)*] ")"
 
-    function_with_return : "fn" identifier "(" [variable_declaration ("," variable_declaration)*] ")" ":" type_usage block
+    function_declaration_with_return : "fn" identifier "(" [variable_declaration ("," variable_declaration)*] ")" ":" type_usage
 
-    function : function_with_return
-             | function_without_return
+    function_declaration : function_declaration_with_return
+                         | function_declaration_without_return
 
+    function : function_declaration block
 
     struct_definition_field : identifier ":" type_usage
 
@@ -278,10 +305,17 @@ boring_grammar = r"""
 
     type_alias_declaration : "type" identifier "=" type_usage ";"
 
+
+    trait_item : function_declaration ";"
+               | function
+
+    trait_declaration : "type" identifier "trait" "{" trait_item* "}"
+
     type_declaration : struct_type_declaration
                      | type_alias_declaration
 
     impl : "impl" identifier "{" function* "}"
+         | "impl" identifier "for" identifier "{" function* "}"
 
     module : (function|type_declaration|impl)*
 
