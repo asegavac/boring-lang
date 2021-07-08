@@ -155,6 +155,7 @@ class VariableDeclaration:
 @dataclass
 class Function:
     declaration: "FunctionDeclaration"
+    block: Block
     type: TypeUsage
 
 
@@ -202,10 +203,13 @@ class FunctionDeclartation:
     type: TypeUsage
 
 
+TraitItem = Union[FunctionDeclaration, Function]
+
+
 @dataclass
 class TraitTypeDeclaration:
     struct: str
-    functions: List[Function]
+    items: List[TraitItem]
 
 
 @dataclass
@@ -464,16 +468,37 @@ class TreeToBoring(Transformer):
         (identifier, type_usage) = identifier
         return VariableDeclaration(name=identifier, type=type_usage)
 
-    def function_without_return(self, function) -> Function:
+    def function_declaration_without_return(self, fdwr) -> FunctionDeclaration:
+        return FunctionDeclaration(
+            name=function[0],
+            arguments=function[1:],
+            return_type=DataTypeUsage(name=UNIT_TYPE),
+            type=FunctionTypeUsage(
+                arguments=[arg.type for arg in function[1:]],
+                return_type=DataTypeUsage(name=UNIT_TYPE),
+            ),
+        )
+
+    def function_declaration_with_return(self, fdwr) -> FunctionDeclaration:
         return Function(
             name=function[0],
             arguments=function[1:-1],
-            return_type=DataTypeUsage(name=UNIT_TYPE),
-            block=function[-1],
+            return_type=function[-1],
             type=FunctionTypeUsage(
-                arguments=[arg.type for arg in function[1:-1]],
-                return_type=DataTypeUsage(name=UNIT_TYPE),
+                arguments=[arg.type for arg in function[1:-1]], return_type=function[-1]
             ),
+        )
+
+    def function_declaration(self, fd) -> FunctionDeclaration:
+        (fd,) = fd
+        assert isinstance(fd, FunctionDeclaration)
+        return fd
+
+    def function(self, function) -> Function:
+        return Function(
+            declaration=function[0],
+            block=function[1],
+            type=UnknownTypeUsage(),
         )
 
     def function_with_return(self, function) -> Function:
