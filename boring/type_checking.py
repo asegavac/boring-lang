@@ -104,7 +104,7 @@ class TypeChecker:
                 for name, field in type_declaration.fields.items():
                     assert_exists(ctx, field)
         for function in module.functions:
-            ctx.environment[function.name] = function
+            ctx.environment[function.declaration.name] = function
 
         changed = False
         for impl in module.impls:
@@ -120,9 +120,9 @@ class TypeChecker:
     def with_function(self, ctx: Context, function: parse.Function) -> bool:
         function_ctx = ctx.copy()
         function_ctx.current_function = function
-        for argument in function.arguments:
+        for argument in function.declaration.arguments:
             function_ctx.environment[argument.name] = argument
-        assert isinstance(function.type, parse.FunctionTypeUsage)
+        assert isinstance(function.declaration.type, parse.FunctionTypeUsage)
 
         changed = self.with_block(function_ctx, function.block)
 
@@ -131,10 +131,10 @@ class TypeChecker:
             and function.block.type.name == parse.NEVER_TYPE
         ):
             type, compare_changed = type_compare(
-                function_ctx, function.block.type, function.type.return_type
+                function_ctx, function.block.type, function.declaration.type.return_type
             )
             function.block.type = type
-            function.type.return_type = type
+            function.declaration.type.return_type = type
             if compare_changed is True:
                 changed = True
         return changed
@@ -224,12 +224,12 @@ class TypeChecker:
             and return_statement.source.type.name == parse.NEVER_TYPE
         ):
             assert isinstance(ctx.current_function, parse.Function)
-            assert isinstance(ctx.current_function.type, parse.FunctionTypeUsage)
+            assert isinstance(ctx.current_function.declaration.type, parse.FunctionTypeUsage)
             type, compare_changed = type_compare(
-                ctx, return_statement.source.type, ctx.current_function.type.return_type
+                ctx, return_statement.source.type, ctx.current_function.declaration.type.return_type
             )
             return_statement.source.type = type
-            ctx.current_function.type.return_type = type
+            ctx.current_function.declaration.type.return_type = type
             if compare_changed is True:
                 changed = True
         return changed
@@ -356,10 +356,10 @@ class TypeChecker:
             found = False
             for impl in impls:
                 for function in impl.functions:
-                    if function.name == struct_getter.attribute:
-                        assert isinstance(function.type, parse.FunctionTypeUsage)
+                    if function.declaration.name == struct_getter.attribute:
+                        assert isinstance(function.declaration.type, parse.FunctionTypeUsage)
                         result_type, changed_getter = type_compare(
-                            ctx, struct_getter.type, function_to_method(function.type)
+                            ctx, struct_getter.type, function_to_method(function.declaration.type)
                         )
                         found = True
                         break

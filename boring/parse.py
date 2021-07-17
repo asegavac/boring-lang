@@ -156,7 +156,14 @@ class VariableDeclaration:
 class Function:
     declaration: "FunctionDeclaration"
     block: Block
-    type: TypeUsage
+
+    @property
+    def type(self):
+        return self.declaration.type
+
+    @type.setter
+    def type(self, value):
+        self.declaration.type = value
 
 
 @dataclass
@@ -317,6 +324,7 @@ boring_grammar = r"""
 
     type_declaration : struct_type_declaration
                      | type_alias_declaration
+                     | trait_declaration
 
     impl : "impl" identifier "{" function* "}"
          | "impl" identifier "for" identifier "{" function* "}"
@@ -470,22 +478,22 @@ class TreeToBoring(Transformer):
 
     def function_declaration_without_return(self, fdwr) -> FunctionDeclaration:
         return FunctionDeclaration(
-            name=function[0],
-            arguments=function[1:],
+            name=fdwr[0],
+            arguments=fdwr[1:],
             return_type=DataTypeUsage(name=UNIT_TYPE),
             type=FunctionTypeUsage(
-                arguments=[arg.type for arg in function[1:]],
+                arguments=[arg.type for arg in fdwr[1:]],
                 return_type=DataTypeUsage(name=UNIT_TYPE),
             ),
         )
 
     def function_declaration_with_return(self, fdwr) -> FunctionDeclaration:
-        return Function(
-            name=function[0],
-            arguments=function[1:-1],
-            return_type=function[-1],
+        return FunctionDeclaration(
+            name=fdwr[0],
+            arguments=fdwr[1:-1],
+            return_type=fdwr[-1],
             type=FunctionTypeUsage(
-                arguments=[arg.type for arg in function[1:-1]], return_type=function[-1]
+                arguments=[arg.type for arg in fdwr[1:-1]], return_type=fdwr[-1]
             ),
         )
 
@@ -494,27 +502,9 @@ class TreeToBoring(Transformer):
         assert isinstance(fd, FunctionDeclaration)
         return fd
 
-    def function(self, function) -> Function:
-        return Function(
-            declaration=function[0],
-            block=function[1],
-            type=UnknownTypeUsage(),
-        )
-
-    def function_with_return(self, function) -> Function:
-        return Function(
-            name=function[0],
-            arguments=function[1:-2],
-            return_type=function[-2],
-            block=function[-1],
-            type=FunctionTypeUsage(
-                arguments=[arg.type for arg in function[1:-2]], return_type=function[-2]
-            ),
-        )
-
     def function(self, function):
-        (function,) = function
-        return function
+        (declaration, block) = function
+        return Function(declaration, block)
 
     def struct_definition_field(self, struct_definition_field):
         (field, type_usage) = struct_definition_field

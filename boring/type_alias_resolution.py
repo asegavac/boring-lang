@@ -67,10 +67,10 @@ class TypeAliasResolver:
         return
 
     def with_function(self, ctx: Context, function: parse.Function):
-        for argument in function.arguments:
+        for argument in function.declaration.arguments:
             argument.type = process_type(ctx, argument.type)
-        function.return_type = process_type(ctx, function.return_type)
-        function.type = process_type(ctx, function.type)
+        function.declaration.return_type = process_type(ctx, function.declaration.return_type)
+        function.declaration.type = process_type(ctx, function.declaration.type)
 
         self.with_block(ctx, function.block)
         return
