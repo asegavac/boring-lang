@@ -2,11 +2,30 @@ use std::str::FromStr;
 use crate::ast;
 use crate::types;
 
-grammar;
+grammar(id_generator: ast::IdGenerator);
 
 
-pub LiteralInt: ast::LiteralInt = {
-    <literal:r"[0-9]+"> => ast::LiteralInt{value: i64::from_str(literal).unwrap()}
+pub TypeUsage: ast::TypeUsage = {
+    "fn" "(" <args:Comma<TypeUsage>> ")" => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: ast::new_unit()}),
+    "fn" "(" <args:Comma<TypeUsage>> ")" ":" <return_type:TypeUsage> => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: return_type),
+    <name:Identifier> => ast::TypeUsage::Named(ast::NamedTypeUsage{name: name})
+};
+
+
+pub LiteralInt: i64 = {
+    <literal:r"[0-9]+"> => i64::from_str(literal).unwrap()
+};
+
+pub SpannedLiteralInt: ast::LiteralInt {
+    <literal_int:Spanned<LiteralInt>> => ast::LiteralInt{value: literal_int, type: ast::new_named("i64")},
+};
+
+pub LiteralFloat: f64 = {
+    <literal:r"[0-9]+\.[0-9]+"> => f64::from_str(literal).unwrap()
+};
+
+pub SpannedLiteralInt: ast::LiteralFloat {
+    <literal_float:Spanned<LiteralFloat>> => ast::LiteralFloat{value: literal_float, type: ast::new_named("f64")},
 };
 
 pub Identifier: ast::Identifier = {

@@ -202,14 +202,6 @@ class Impl:
     functions: List[Function]
 
 
-@dataclass
-class FunctionDeclartation:
-    name: str
-    arguments: List[VariableDeclaration]
-    return_type: TypeUsage
-    type: TypeUsage
-
-
 TraitItem = Union[FunctionDeclaration, Function]
 
 
