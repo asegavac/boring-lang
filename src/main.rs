@@ -1,4 +1,4 @@
-mod types;
+// mod types;
 mod ast;
 #[macro_use] extern crate lalrpop_util;
 
@@ -7,7 +7,7 @@ lalrpop_mod!(pub grammar); // synthesized by LALRPOP
 use std::fs;
 use std::io::Write;
 // mod compiler;
-use inkwell::context::Context;
+// use inkwell::context::Context;
 extern crate clap;
 use clap::{Arg, App};
 
@@ -38,7 +38,9 @@ fn main() {
     let output = matches.value_of("OUTPUT").unwrap_or(default_output);
 
     let contents = fs::read_to_string(input).expect("input file not found");
-    let module_ast =  grammar::ModuleParser::new().parse(&contents).unwrap(); //TODO: convert to error
+    let unknown_id_gen = ast::IdGenerator::new();
+    let module_ast =  grammar::ModuleParser::new().parse(&unknown_id_gen, &contents).unwrap(); //TODO: convert to error
+    println!("ast: {:#?}", &module_ast);
 
 
     // let context = Context::create();
@@ -52,33 +54,34 @@ fn main() {
 
 #[test]
 fn grammar() {
-    assert!(grammar::LiteralIntParser::new().parse("22").is_ok());
-    assert!(grammar::IdentifierParser::new().parse("foo").is_ok());
-    assert!(grammar::LiteralIntParser::new().parse("2a").is_err());
+    let id_gen = ast::IdGenerator::new();
+    assert!(grammar::LiteralIntParser::new().parse(&id_gen, "22").is_ok());
+    assert!(grammar::IdentifierParser::new().parse(&id_gen, "foo").is_ok());
+    assert!(grammar::LiteralIntParser::new().parse(&id_gen, "2a").is_err());
 
-    assert!(grammar::TermParser::new().parse("22").is_ok());
-    assert!(grammar::TermParser::new().parse("foo").is_ok());
+    assert!(grammar::TermParser::new().parse(&id_gen, "22").is_ok());
+    assert!(grammar::TermParser::new().parse(&id_gen, "foo").is_ok());
 
-    assert!(grammar::ExpressionParser::new().parse("22 * foo").is_ok());
-    assert!(grammar::ExpressionParser::new().parse("22 * 33").is_ok());
-    assert!(grammar::ExpressionParser::new().parse("(22 * 33) + 24").is_ok());
+    assert!(grammar::ExpressionParser::new().parse(&id_gen, "22 * foo").is_ok());
+    assert!(grammar::ExpressionParser::new().parse(&id_gen, "22 * 33").is_ok());
+    assert!(grammar::ExpressionParser::new().parse(&id_gen, "(22 * 33) + 24").is_ok());
 
-    assert!(grammar::BlockParser::new().parse("{ (22 * 33) + 24 }").is_ok());
-    assert!(grammar::BlockParser::new().parse("{ (22 * 33) + 24; 24 }").is_ok());
+    assert!(grammar::BlockParser::new().parse(&id_gen, "{ (22 * 33) + 24 }").is_ok());
+    assert!(grammar::BlockParser::new().parse(&id_gen, "{ (22 * 33) + 24; 25 }").is_ok());
     // assert!(grammar::BlockParser::new().parse("{ (22 * 33) + 24\n 24 }").is_ok());
-    assert!(grammar::BlockParser::new().parse("{ }").is_err());
+    assert!(grammar::BlockParser::new().parse(&id_gen, "{ }").is_ok());
 
-    assert!(grammar::VariableDeclarationParser::new().parse("foo: Int32").is_ok());
-    assert!(grammar::VariableDeclarationParser::new().parse("foo").is_err());
-    assert!(grammar::VariableDeclarationParser::new().parse("1234").is_err());
+    assert!(grammar::VariableDeclarationParser::new().parse(&id_gen, "foo: Int32").is_ok());
+    assert!(grammar::VariableDeclarationParser::new().parse(&id_gen, "foo").is_err());
+    assert!(grammar::VariableDeclarationParser::new().parse(&id_gen, "1234").is_err());
 
-    assert!(grammar::FunctionParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + b }").is_ok());
-    assert!(grammar::FunctionParser::new().parse("fn random_dice_roll() Int32 { 4 }").is_ok());
-    assert!(grammar::FunctionParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + }").is_err());
-    assert!(grammar::FunctionParser::new().parse("fn add(a: Int32, b: Int32) Int32").is_err());
+    assert!(grammar::FunctionParser::new().parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + b }").is_ok());
+    assert!(grammar::FunctionParser::new().parse(&id_gen, "fn random_dice_roll(): Int32 { 4 }").is_ok());
+    assert!(grammar::FunctionParser::new().parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + }").is_err());
+    assert!(grammar::FunctionParser::new().parse(&id_gen, "fn add(a: Int32, b: Int32): Int32").is_err());
 
-    assert!(grammar::FunctionCallParser::new().parse("foo(1, 2)").is_ok());
+    assert!(grammar::FunctionCallParser::new().parse(&id_gen, "foo(1, 2)").is_ok());
 
-    assert!(grammar::ModuleParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + b }").is_ok());
-    assert!(grammar::ModuleParser::new().parse("fn add(a: Int32, b: Int32) Int32 { a + b } fn subtract(a: Int32, b: Int32) Int32 { a - b }").is_ok());
+    assert!(grammar::ModuleParser::new().parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + b }").is_ok());
+    assert!(grammar::ModuleParser::new().parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + b } fn subtract(a: Int32, b: Int32): Int32 { a - b }").is_ok());
 }

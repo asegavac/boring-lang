@@ -65,19 +65,19 @@ impl User {
     }
 }
 
-type TestTrait trait {
-    fn classMethod(id: I64): Self;
-    fn instanceMethod(self: Self): I64;
-    fn defaultImpl(self: Self): I64 {
-        return self.instanceMethod;
-    }
-}
-
-impl TestTrait for User {
-    fn classMethod(id: I64): Self {
-        return User{id: id,};
-    }
-    fn instanceMethod(self: Self): I64 {
-        return self.get_id();
-    }
-}
+// type TestTrait trait {
+//     fn classMethod(id: I64): Self;
+//     fn instanceMethod(self: Self): I64;
+//     fn defaultImpl(self: Self): I64 {
+//         return self.instanceMethod;
+//     }
+// }
+//
+// impl TestTrait for User {
+//     fn classMethod(id: I64): Self {
+//         return User{id: id,};
+//     }
+//     fn instanceMethod(self: Self): I64 {
+//         return self.get_id();
+//     }
+// }

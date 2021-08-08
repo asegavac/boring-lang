@@ -1,12 +1,12 @@
 version: "3"
 services:
-  # boring:
-  #   build: .
-  #   volumes:
-  #     - .:/code/
-  boring-python:
-    build:
-      context: .
-      dockerfile: Dockerfile-python
+  boring:
+    build: .
     volumes:
       - .:/code/
+  # boring-python:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile-python
+  #   volumes:
+  #     - .:/code/
