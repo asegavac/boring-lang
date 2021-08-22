@@ -1,5 +1,6 @@
 // mod types;
 mod ast;
+mod type_alias_resolution;
 #[macro_use] extern crate lalrpop_util;
 
 lalrpop_mod!(pub grammar); // synthesized by LALRPOP
@@ -41,6 +42,9 @@ fn main() {
     let unknown_id_gen = ast::IdGenerator::new();
     let module_ast =  grammar::ModuleParser::new().parse(&unknown_id_gen, &contents).unwrap(); //TODO: convert to error
     println!("ast: {:#?}", &module_ast);
+    let alias_resolver = type_alias_resolution::TypeAliasResolver{};
+    let resolved_ast = alias_resolver.with_module(&module_ast);
+    println!("ast: {:#?}", &resolved_ast);
 
 
     // let context = Context::create();
