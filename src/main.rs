@@ -1,6 +1,7 @@
 // mod types;
 mod ast;
 mod type_alias_resolution;
+mod type_checking;
 #[macro_use] extern crate lalrpop_util;
 
 lalrpop_mod!(pub grammar); // synthesized by LALRPOP
@@ -44,8 +45,11 @@ fn main() {
     println!("ast: {:#?}", &module_ast);
     let alias_resolver = type_alias_resolution::TypeAliasResolver{};
     let resolved_ast = alias_resolver.with_module(&module_ast);
-    println!("ast: {:#?}", &resolved_ast);
-
+    println!("resolved ast: {:#?}", &resolved_ast);
+    let type_checker = type_checking::TypeChecker{};
+    let (checked_ast, subst) = type_checker.with_module(&resolved_ast);
+    println!("checked ast: {:#?}", &resolved_ast);
+    println!("substitutions: {:#?}", &subst);
 
     // let context = Context::create();
     // let mut code_gen = compiler::ModuleCodeGen::new(&context, "main".to_string());

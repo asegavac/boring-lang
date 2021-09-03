@@ -2,17 +2,38 @@ use std::collections::HashMap;
 use crate::ast;
 
 
-type SubstitutionMap = HashMap<String, ast::TypeUsage>;
+pub type SubstitutionMap = HashMap<String, ast::TypeUsage>;
 
 pub enum NamedEntity {
-    Types(ast::TypeDeclaration),
-    Values(ast::Value),
+    TypeDeclaration(ast::TypeDeclaration),
+    Variable(ast::TypeUsage),
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Context {
+    pub current_function_return: Option<ast::TypeUsage>,
     pub environment: HashMap<String, ast::NamedEntity>,
+}
+
+impl Context {
+    fn add_variable(&self, name: String, type_usage: &ast::TypeUsage) -> Context {
+        let mut ctx = self.clone();
+        ctx.environment[name] = NamedEntity::Variable(type_usage.clone());
+        return ctx;
+    }
+
+    fn add_type(&self, name: String, type_decl: &ast::TypeDeclaration) -> Context {
+        let mut ctx = self.clone();
+        ctx.environment[name] = NamedEntity::TypeDeclaration(type_decl.clone());
+        return ctx;
+    }
+
+    fn set_current_function_return(&self, function: ast::TypeUsage) -> Context {
+        let mut ctx = self.clone();
+        ctx.current_function_return = Some(function);
+        return ctx;
+    }
 }
 
 fn apply_substitution(substitution: &SubstitutionMap, type_: &ast::TypeUsage) -> ast::TypeUsage {
@@ -113,7 +134,7 @@ fn contains(t: ast::TypeUsage, name: &str) -> bool {
 pub struct TypeChecker {}
 
 impl TypeChecker {
-    pub fn with_module(self: &Self, module: &ast::Module) -> ast::Module {
+    pub fn with_module(self: &Self, module: &ast::Module) -> (ast::Module, SubstitutionMap) {
         let mut ctx = Context{
             environment: HashMap::new(), //TODO: builtins
         };
@@ -121,10 +142,10 @@ impl TypeChecker {
         for item in module.items.iter() {
             match item {
                 ast::ModuleItem::TypeDeclaration(ast::TypeDeclaration::Struct(struct_)) => {
-                    ctx.declarations.push(ast::NamedEntity::Types(ast::TypeDeclaration::Struct(struct_.clone())));
+                    ctx.declarations.push(ast::NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(struct_.clone())));
                 },
                 ast::ModuleItem::TypeDeclaration(ast::TypeDeclaration::Alias(alias)) => {
-                    ctx.declarations.push(ast::NamedEntity::Types(ast::TypeDeclaration::Alias(alias.clone())));
+                    ctx.declarations.push(ast::NamedEntity::TypeDeclaration(ast::TypeDeclaration::Alias(alias.clone())));
                 },
                 _ => {},
             }
@@ -149,33 +170,37 @@ impl TypeChecker {
 
     fn with_function(self: &Self, ctx: &Context, function: &ast::Function) -> (ast::Function, SubstitutionMap) {
         // add args to env
+        let mut function_ctx = ctx.set_current_function_return(function.declaration.return_type.clone());
+        for arg in function.declaration.arguments.iter() {
+            function_ctx = function_ctx.add_variable(arg.name.to_string(), arg.type_.clone());
+        }
 
-        let (block, substitution) = self.with_block(ctx, &function.block);
-        // if block.type_ is not never
+        let (block, substitution) = self.with_block(function_ctx, &function.block);
         let substitution = unify(block.type_, function.declaration.return_type);
 
-        return ast::Function{
+        return (ast::Function{
             declaration: ast::FunctionDeclaration{
                 name: function.declaration.name.clone(),
                 arguments: function.declaration.arguments.iter().map(|arg| {
-                    ast::VariableDeclaration{name: arg.name.clone(), type_: process_type(ctx, &arg.type_)}
+                    arg.clone()
                 }).collect(),
-                return_type: apply_substitution(substitution, function.declaration.return_type),
+                return_type: function.declaration.return_type.clone(),
             },
             block: block,
-        };
+        }, substitution);
     }
 
-    fn with_type_declaration(self: &Self, ctx: &Context, type_declaration: &ast::TypeDeclaration) -> ast::TypeDeclaration {
+    fn with_type_declaration(self: &Self, ctx: &Context, type_declaration: &ast::TypeDeclaration) -> (ast::TypeDeclaration, SubstitutionMap) {
         match type_declaration {
             ast::TypeDeclaration::Struct(struct_) => {
-                return ast::TypeDeclaration::Struct(self.with_struct_declaration(ctx, struct_));
+                let (result, substitution) = self.with_struct_declaration(ctx, struct_);
+                return (ast::TypeDeclaration::Struct(result), substitution);
             },
             ast::TypeDeclaration::Primitive(primitive) => {
-                return ast::TypeDeclaration::Primitive(primitive.clone());
+                return (ast::TypeDeclaration::Primitive(primitive.clone()), SubstitutionMap::new());
             },
             ast::TypeDeclaration::Alias(alias) => {
-                return ast::TypeDeclaration::Alias(alias.clone());
+                return (ast::TypeDeclaration::Alias(alias.clone()), SubstitutionMap::new());
             },
         }
     }
@@ -186,148 +211,181 @@ impl TypeChecker {
             fields: struct_.fields.iter().map(|field|{
                 ast::StructField{
                     name: field.name.clone(),
-                    type_: process_type(ctx, &field.type_),
+                    type_: field.type_.clone(),
                 }
             }).collect(),
         };
     }
 
-    fn with_impl(self: &Self, ctx: &Context, impl_: &ast::Impl) -> ast::Impl {
-        let mut impl_ctx = ctx.clone();
-        impl_ctx.type_aliases.push(ast::AliasTypeDeclaration{
-            name: ast::Identifier{
-                name: ast::Spanned{
-                    span: ast::Span{left: 0, right: 0}, //todo: figure out a sane value for these
-                    value:  "Self".to_string(),
-                }
-            },
-            replaces: ast::TypeUsage::Named(ast::NamedTypeUsage{name: impl_.struct_name.clone()})
-        });
-        return ast::Impl{
+    fn with_impl(self: &Self, ctx: &Context, impl_: &ast::Impl) -> (ast::Impl, SubstitutionMap) {
+        let mut substitutions = SubstitutionMap::new();
+        return (ast::Impl{
             struct_name: impl_.struct_name.clone(),
             functions: impl_.functions.iter().map(|f|{
-                self.with_function(&impl_ctx, f)
+                let (result, function_subs) = self.with_function(&ctx, f);
+                substitutions = compose_substitutions(substitutions, function_subs)
+                result
             }).collect(),
-        };
+        }, substitutions);
     }
 
-    fn with_block(self: &Self, ctx: &Context, block: &ast::Block) -> ast::Block {
+    fn with_block(self: &Self, ctx: &Context, block: &ast::Block) -> (ast::Block, SubstitutionMap) {
+        let mut substitutions = SubstitutionMap::new();
+        let mut block_ctx = ctx.clone();
         return ast::Block{
             statements: block.statements.iter().map(|s| {
-                self.with_statement(ctx, s)
+                let (statement_ctx, result, statement_substitutions) = self.with_statement(block_ctx, s);
+                block_ctx = statement_ctx
+                substitutions = compose_substitutions(substitutions, statement_substitutions);
+                result
             }).collect(),
-            type_: process_type(ctx, &block.type_),
+            type_: block.type_.clone(),
         };
     }
 
-    fn with_statement(self: &Self, ctx: &Context, statement: &ast::Statement) -> ast::Statement {
+    fn with_statement(self: &Self, ctx: &Context, statement: &ast::Statement) -> (Context, ast::Statement, SubstitutionMap) {
+
         match statement {
             ast::Statement::Return(return_statement) => {
-                return ast::Statement::Return(self.with_return_statement(ctx, return_statement));
+                let (result, subst) = self.with_return_statement(ctx, return_statement);
+                return (ctx.clone(), ast::Statement::Return(result), subst);
             },
             ast::Statement::Let(let_statement) => {
-                return ast::Statement::Let(self.with_let_statement(ctx, let_statement));
+                let (let_ctx, result, subst) = self.with_let_statement(ctx, let_statement);
+                return (let_ctx, ast::Statement::Let(result), subst);
             },
             ast::Statement::Assignment(assignment_statement) => {
-                return ast::Statement::Assignment(self.with_assignment_statement(ctx, assignment_statement));
+                let (result, subst) = self.with_assignment_statement(ctx, assignment_statement);
+                return (ctx.clone(), ast::Statement::Assignment(result), subst);
             },
             ast::Statement::Expression(expression) => {
-                return ast::Statement::Expression(self.with_expression(ctx, expression));
+                let (result, subst) = self.with_expression(ctx, expression);
+                return (ctx.clone(), ast::Statement::Expression(result), subst);
             },
         }
     }
 
-    fn with_return_statement(self: &Self, ctx: &Context, statement: &ast::ReturnStatement) -> ast::ReturnStatement {
-        return ast::ReturnStatement{
-            source: self.with_expression(ctx, &statement.source),
-        };
+    fn with_return_statement(self: &Self, ctx: &Context, statement: &ast::ReturnStatement) -> (ast::ReturnStatement, SubstitutionMap) {
+        let (result, subst) = self.with_expression(ctx, &statement.source);
+        let substitution = compose_substitutions(subst, unify(result.type_, ctx.current_function_return));
+        return (ast::ReturnStatement{
+            source: result,
+        }, substitution);
     }
 
-    fn with_let_statement(self: &Self, ctx: &Context, statement: &ast::LetStatement) -> ast::LetStatement {
-        return ast::LetStatement{
+    fn with_let_statement(self: &Self, ctx: &Context, statement: &ast::LetStatement) -> (Context, ast::LetStatement, SubstitutionMap) {
+        let (result, subst) = self.with_expression(ctx, &statement.expression);
+        let let_ctx = ctx.add_variable(statement.variable_name.clone(), result.type_);
+        let substitution = compose_substitutions(subst, unify(&statement.type_, result.type_));
+        return (let_ctx, ast::LetStatement{
             variable_name: statement.variable_name.clone(),
-            expression: self.with_expression(ctx, &statement.expression),
-            type_: process_type(ctx, &statement.type_),
-        };
+            expression: result,
+            type_: &statement.type_.clone(),
+        }, substitution);
     }
 
     fn with_assignment_statement(self: &Self, ctx: &Context, statement: &ast::AssignmentStatement) -> ast::AssignmentStatement {
+
         return ast::AssignmentStatement{
             source: match &statement.source {
                 ast::AssignmentTarget::Variable(variable) => {
-                    ast::AssignmentTarget::Variable(ast::VariableUsage{
+                    let assignment_subs = compose_substitutions(subs, unify(&expr.type_, &variable.type_));
+                    (ast::AssignmentTarget::Variable(ast::VariableUsage{
                         name: variable.name.clone(),
-                        type_: process_type(ctx, &variable.type_),
-                    })
+                        type_: &variable.type_.clone(),
+                    }), assignment_subs)
                 },
                 ast::AssignmentTarget::StructAttr(struct_attr) => {
-                    ast::AssignmentTarget::StructAttr(ast::StructGetter{
-                        source: self.with_expression(ctx, &struct_attr.source),
+                    // let assignment_subs = compose_substitutions(subs, unify(&expr.type_, &struct_attr.type_));
+                    let (expr, subst) = self.with_expression(ctx, &struct_attr.source);
+
+                    (ast::AssignmentTarget::StructAttr(ast::StructGetter{
+                        source: expr,
                         attribute: struct_attr.attribute.clone(),
-                        type_: process_type(ctx, &struct_attr.type_)
-                    })
+                        type_: &struct_attr.type_.clone(),
+                    }), subst)
                 },
             },
-            expression: self.with_expression(ctx, &statement.expression),
+            expression: expr,
         }
     }
 
-    fn with_expression(self: &Self, ctx: &Context, expression: &ast::Expression) -> ast::Expression {
-        return ast::Expression{
+    fn with_expression(self: &Self, ctx: &Context, expression: &ast::Expression) -> (ast::Expression, SubstitutionMap) {
+        let mut substitution = SubstitutionMap::new();
+        let expr = ast::Expression{
             subexpression: Box::new(match &*expression.subexpression {
                 ast::Subexpression::LiteralInt(literal_int) => {
                     ast::Subexpression::LiteralInt(ast::LiteralInt{
                         value: literal_int.value.clone(),
-                        type_: process_type(ctx, &literal_int.type_),
+                        type_: literal_int.type_.clone(),
                     })
                 },
                 ast::Subexpression::LiteralFloat(literal_float) => {
                     ast::Subexpression::LiteralFloat(ast::LiteralFloat{
                         value: literal_float.value.clone(),
-                        type_: process_type(ctx, &literal_float.type_),
+                        type_: literal_float.type_.clone(),
                     })
                 },
                 ast::Subexpression::LiteralStruct(literal_struct) => {
                     ast::Subexpression::LiteralStruct(ast::LiteralStruct{
                         name: literal_struct.name.clone(),
                         fields: literal_struct.fields.iter().map(|field|{
+
+                            // substitution = compose_substitutions(substitution, );
                             (field.0.clone(), self.with_expression(ctx, &field.1))
                         }).collect(),
-                        type_: process_type(ctx, &literal_struct.type_),
+                        type_: literal_struct.type_.clone(),
                     })
                 },
                 ast::Subexpression::FunctionCall(function_call) => {
                     ast::Subexpression::FunctionCall(ast::FunctionCall{
                         source: self.with_expression(ctx, &function_call.source),
                         arguments: function_call.arguments.iter().map(|arg| {self.with_expression(ctx, arg)}).collect(),
-                        type_: process_type(ctx, &function_call.type_)
+                        type_: function_call.type_.clone(),
                     })
                 },
                 ast::Subexpression::VariableUsage(variable_usage) => {
+                    match ctx.environment[variable_usage.name] {
+                        NamedEntity::TypeDeclaration(_) => {
+                            panic!("Using types not yet supported");
+                        },
+                        NamedEntity::Variable(variable) => {
+                            substitution = compose_substitutions(substitution, unify(variable, expression.type_));
+                        },
+                    }
                     ast::Subexpression::VariableUsage(ast::VariableUsage{
                         name: variable_usage.name.clone(),
-                        type_: process_type(ctx, &variable_usage.type_)
+                        type_: variable_usage.type_.clone(),
                     })
                 },
                 ast::Subexpression::StructGetter(struct_getter) => {
                     ast::Subexpression::StructGetter(ast::StructGetter{
                         source: self.with_expression(ctx, &struct_getter.source),
                         attribute: struct_getter.attribute.clone(),
-                        type_: process_type(ctx, &struct_getter.type_),
+                        type_: struct_getter.type_.clone(),
                     })
                 },
                 ast::Subexpression::Block(block) => {
-                    ast::Subexpression::Block(self.with_block(ctx, &block))
+                    let (result, substitution) = self.with_block(ctx, &block);
+                    substitution = compose_substitutions(substitution, unify(expression.type_, block.type_));
+                    ast::Subexpression::Block(result)
                 },
                 ast::Subexpression::Op(op) => {
+                    let expr_left, subst_left = self.with_expression(ctx, &op.left);
+                    let expr_right, subst_right = self.with_expression(ctx, &op.right);
+                    substitution = compose_substitutions(substitution, subst_left);
+                    substitution = compose_substitutions(substitution, subst_right);
+                    substitution = compose_substitutions(substitution, unify(expression.type_, expr_left.type_));
+                    substitution = compose_substitutions(substitution, unify(expression.type_, expr_right.type_));
                     ast::Subexpression::Op(ast::Operation{
-                        left: self.with_expression(ctx, &op.left),
+                        left: expr_left,
                         op: op.op.clone(),
-                        right: self.with_expression(ctx, &op.right),
+                        right: expr_right,
                     })
                 },
             }),
-            type_: process_type(ctx, &expression.type_),
-        }
+            type_: expression.type_.clone(),
+        };
+        return (expr, substitution);
     }
 }
