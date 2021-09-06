@@ -212,8 +212,13 @@ impl TypeAliasResolver {
                     })
                 },
                 ast::Subexpression::LiteralStruct(literal_struct) => {
+                    let result = resolve_type(ctx, &ast::NamedTypeUsage{name: literal_struct.name.clone()});
+                    let new_name = match &result {
+                        ast::TypeUsage::Named(named) => { named.name.clone() },
+                        _ => panic!("LiteralStruct resolved to non-named-type"),
+                    };
                     ast::Subexpression::LiteralStruct(ast::LiteralStruct{
-                        name: literal_struct.name.clone(),
+                        name: new_name.clone(),
                         fields: literal_struct.fields.iter().map(|field|{
                             (field.0.clone(), self.with_expression(ctx, &field.1))
                         }).collect(),

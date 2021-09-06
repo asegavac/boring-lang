@@ -48,7 +48,7 @@ fn main() {
     println!("resolved ast: {:#?}", &resolved_ast);
     let type_checker = type_checking::TypeChecker{};
     let (checked_ast, subst) = type_checker.with_module(&resolved_ast);
-    println!("checked ast: {:#?}", &resolved_ast);
+    println!("checked ast: {:#?}", &checked_ast);
     println!("substitutions: {:#?}", &subst);
 
     // let context = Context::create();
