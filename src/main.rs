@@ -108,7 +108,7 @@ fn grammar() {
     assert!(grammar::BlockParser::new().parse(&id_gen, "{ }").is_ok());
 
     assert!(grammar::VariableDeclarationParser::new()
-        .parse(&id_gen, "foo: Int32")
+        .parse(&id_gen, "foo: i32")
         .is_ok());
     assert!(grammar::VariableDeclarationParser::new()
         .parse(&id_gen, "foo")
@@ -118,16 +118,16 @@ fn grammar() {
         .is_err());
 
     assert!(grammar::FunctionParser::new()
-        .parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + b }")
+        .parse(&id_gen, "fn add(a: i32, b: i32): i32 { a + b }")
         .is_ok());
     assert!(grammar::FunctionParser::new()
-        .parse(&id_gen, "fn random_dice_roll(): Int32 { 4 }")
+        .parse(&id_gen, "fn random_dice_roll(): i32 { 4 }")
         .is_ok());
     assert!(grammar::FunctionParser::new()
-        .parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + }")
+        .parse(&id_gen, "fn add(a: i32, b: i32): i32 { a + }")
         .is_err());
     assert!(grammar::FunctionParser::new()
-        .parse(&id_gen, "fn add(a: Int32, b: Int32): Int32")
+        .parse(&id_gen, "fn add(a: i32, b: i32): i32")
         .is_err());
 
     assert!(grammar::FunctionCallParser::new()
@@ -135,7 +135,7 @@ fn grammar() {
         .is_ok());
 
     assert!(grammar::ModuleParser::new()
-        .parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + b }")
+        .parse(&id_gen, "fn add(a: i32, b: i32): i32 { a + b }")
         .is_ok());
-    assert!(grammar::ModuleParser::new().parse(&id_gen, "fn add(a: Int32, b: Int32): Int32 { a + b } fn subtract(a: Int32, b: Int32): Int32 { a - b }").is_ok());
+    assert!(grammar::ModuleParser::new().parse(&id_gen, "fn add(a: i32, b: i32): i32 { a + b } fn subtract(a: i32, b: i32): i32 { a - b }").is_ok());
 }
