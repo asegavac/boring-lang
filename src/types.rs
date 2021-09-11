@@ -4,7 +4,6 @@ pub enum Signedness {
     Unsigned,
 }
 
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum IntBitness {
     X8,
@@ -14,7 +13,6 @@ pub enum IntBitness {
     X128,
 }
 
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum FloatBitness {
     X32,
@@ -22,13 +20,11 @@ pub enum FloatBitness {
     X128,
 }
 
-
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct IntTypeDef {
     pub signedness: Signedness,
     pub bitness: IntBitness,
 }
-
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FloatTypeDef {
@@ -40,7 +36,6 @@ pub struct FunctionTypeDef {
     pub arguments: Vec<Type>,
     pub return_type: Box<Type>,
 }
-
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Type {
@@ -54,7 +49,6 @@ pub enum Type {
     // Void,
     // Never,
 }
-
 
 /// Used for places where type info may or may not be solved.
 #[derive(Clone, Eq, PartialEq, Hash)]

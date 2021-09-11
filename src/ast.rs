@@ -6,7 +6,9 @@ pub struct IdGenerator {
 
 impl IdGenerator {
     pub fn new() -> Self {
-        IdGenerator{counter: RefCell::new(0)}
+        IdGenerator {
+            counter: RefCell::new(0),
+        }
     }
 
     pub fn next(&self) -> String {
@@ -16,32 +18,31 @@ impl IdGenerator {
 }
 
 pub fn new_unit() -> TypeUsage {
-    TypeUsage::Named(NamedTypeUsage{
-        name: Identifier{
-            name: Spanned{
-                span: Span{left: 0, right: 0}, //todo: figure out a sane value for these
+    TypeUsage::Named(NamedTypeUsage {
+        name: Identifier {
+            name: Spanned {
+                span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
                 value: "unit".to_string(),
-            }
-        }
+            },
+        },
     })
 }
 
 pub fn new_never() -> TypeUsage {
-    TypeUsage::Named(NamedTypeUsage{
-        name: Identifier{
-            name: Spanned{
-                span: Span{left: 0, right: 0}, //todo: figure out a sane value for these
+    TypeUsage::Named(NamedTypeUsage {
+        name: Identifier {
+            name: Spanned {
+                span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
                 value: "!".to_string(),
-            }
-        }
+            },
+        },
     })
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Span {
     pub left: usize,
-    pub right: usize
+    pub right: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,7 +50,6 @@ pub struct Spanned<T> {
     pub span: Span,
     pub value: T,
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionTypeUsage {
@@ -76,31 +76,33 @@ pub enum TypeUsage {
 
 impl TypeUsage {
     pub fn new_unknown(id_gen: &IdGenerator) -> TypeUsage {
-        return TypeUsage::Unknown(UnknownTypeUsage{
+        return TypeUsage::Unknown(UnknownTypeUsage {
             name: id_gen.next(),
         });
     }
 
     pub fn new_named(identifier: Identifier) -> TypeUsage {
-        return TypeUsage::Named(NamedTypeUsage{
+        return TypeUsage::Named(NamedTypeUsage {
             name: identifier.clone(),
         });
     }
 
     pub fn new_builtin(name: String) -> TypeUsage {
-        TypeUsage::Named(NamedTypeUsage{
-            name: Identifier{
-                name: Spanned{
-                    span: Span{left: 0, right: 0}, //todo: figure out a sane value for these
+        TypeUsage::Named(NamedTypeUsage {
+            name: Identifier {
+                name: Spanned {
+                    span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
                     value: name,
-                }
-            }
+                },
+            },
         })
     }
 
     pub fn new_function(arg_count: usize, id_gen: &IdGenerator) -> TypeUsage {
-        return TypeUsage::Function(FunctionTypeUsage{
-            arguments: (0..arg_count).map(|_| TypeUsage::new_unknown(&id_gen)).collect(),
+        return TypeUsage::Function(FunctionTypeUsage {
+            arguments: (0..arg_count)
+                .map(|_| TypeUsage::new_unknown(&id_gen))
+                .collect(),
             return_type: Box::new(TypeUsage::new_unknown(&id_gen)),
         });
     }
