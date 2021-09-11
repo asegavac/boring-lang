@@ -18,6 +18,29 @@ struct Context {
     pub environment: HashMap<String, NamedEntity>,
 }
 
+fn create_builtins() -> HashMap<String, NamedEntity> {
+    let mut result = HashMap::new();
+    result.insert("i8".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "i8".to_string()})));
+    result.insert("i16".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "i16".to_string()})));
+    result.insert("i32".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "i32".to_string()})));
+    result.insert("i64".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "i64".to_string()})));
+    result.insert("isize".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "isize".to_string()})));
+
+    result.insert("u8".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "u8".to_string()})));
+    result.insert("u16".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "u16".to_string()})));
+    result.insert("u32".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "u32".to_string()})));
+    result.insert("u64".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "u64".to_string()})));
+    result.insert("usize".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "usize".to_string()})));
+
+    result.insert("f32".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "f32".to_string()})));
+    result.insert("f64".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "f64".to_string()})));
+
+    result.insert("!".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "!".to_string()})));
+    result.insert("unit".to_string(), NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration{name: "!".to_string()})));
+
+    return result;
+}
+
 impl Context {
     fn add_variable(&self, name: String, type_usage: &ast::TypeUsage) -> Context {
         let mut ctx = self.clone();
@@ -38,9 +61,37 @@ impl Context {
     }
 }
 
-fn apply_substitution(substitution: &SubstitutionMap, type_: &ast::TypeUsage) -> ast::TypeUsage {
+fn type_exists(ctx: &Context, type_: &ast::TypeUsage) { // TODO: error handling
     match type_ {
-        ast::TypeUsage::Named(named) => ast::TypeUsage::Named(named.clone()),
+        ast::TypeUsage::Named(named) => {
+            if !ctx.environment.contains_key(&named.name.name.value) {
+                panic!("unknown type: {}", &named.name.name.value);
+            }
+            match ctx.environment[&named.name.name.value] {
+                NamedEntity::TypeDeclaration(_) => {
+                    // is a type
+                },
+                _ => {
+                    panic!("unknown type")
+                },
+            }
+        },
+        ast::TypeUsage::Unknown(unknown) => {}, // do nothing
+        ast::TypeUsage::Function(function) => {
+            for arg in function.arguments.iter() {
+                type_exists(ctx, arg);
+            }
+            type_exists(ctx, &function.return_type);
+        }
+    }
+}
+
+fn apply_substitution(ctx: &Context, substitution: &SubstitutionMap, type_: &ast::TypeUsage) -> ast::TypeUsage {
+
+    let result = match type_ {
+        ast::TypeUsage::Named(named) => {
+            ast::TypeUsage::Named(named.clone())
+        },
         ast::TypeUsage::Unknown(unknown) => {
             if substitution.contains_key(&unknown.name) {
                 substitution[&unknown.name].clone()
@@ -51,23 +102,25 @@ fn apply_substitution(substitution: &SubstitutionMap, type_: &ast::TypeUsage) ->
         ast::TypeUsage::Function(function) => {
             ast::TypeUsage::Function(ast::FunctionTypeUsage{
                 arguments: function.arguments.iter().map(|arg| {
-                    apply_substitution(substitution, arg)
+                    apply_substitution(ctx, substitution, arg)
                 }).collect(),
-                return_type: Box::new(apply_substitution(substitution, &function.return_type)),
+                return_type: Box::new(apply_substitution(ctx, substitution, &function.return_type)),
             })
         }
-    }
+    };
+    type_exists(ctx, &result);
+    return result;
 }
 
-fn compose_substitutions(s1: &SubstitutionMap, s2: &SubstitutionMap) -> SubstitutionMap {
+fn compose_substitutions(ctx: &Context, s1: &SubstitutionMap, s2: &SubstitutionMap) -> SubstitutionMap {
     let mut result = SubstitutionMap::new();
     for k in s2.keys() {
-        result.insert(k.to_string(), apply_substitution(s1, &s2[k]));
+        result.insert(k.to_string(), apply_substitution(ctx, s1, &s2[k]));
     }
     return s1.into_iter().map(|(k, v)| (k.clone(), v.clone())).chain(result).collect();
 }
 
-fn unify(t1: &ast::TypeUsage, t2: &ast::TypeUsage) -> SubstitutionMap {
+fn unify(ctx: &Context, t1: &ast::TypeUsage, t2: &ast::TypeUsage) -> SubstitutionMap {
     match (t1, t2) {
         (ast::TypeUsage::Named(named1), ast::TypeUsage::Named(named2)) => {
             // if named1.name.name.value == "!" || named2.name.name.value == "!" {
@@ -93,12 +146,12 @@ fn unify(t1: &ast::TypeUsage, t2: &ast::TypeUsage) -> SubstitutionMap {
     }
     match (t1, t2) {
         (ast::TypeUsage::Function(f1), ast::TypeUsage::Function(f2)) => {
-            let mut result = unify(&*f1.return_type, &*f2.return_type);
+            let mut result = unify(ctx, &*f1.return_type, &*f2.return_type);
             if f1.arguments.len() != f2.arguments.len() {
                 panic!("Argument lengths don't match");
             }
             for (i, _) in f1.arguments.iter().enumerate() {
-                result = compose_substitutions(&result, &unify(&apply_substitution(&result, &f1.arguments[i]), &apply_substitution(&result, &f2.arguments[i])));
+                result = compose_substitutions(ctx, &result, &unify(ctx, &apply_substitution(ctx, &result, &f1.arguments[i]), &apply_substitution(ctx, &result, &f2.arguments[i])));
             }
             return result;
         },
@@ -153,7 +206,7 @@ pub struct TypeChecker {}
 impl TypeChecker {
     pub fn with_module(self: &Self, module: &ast::Module) -> (ast::Module, SubstitutionMap) {
         let mut ctx = Context{
-            environment: HashMap::new(), //TODO: builtins
+            environment: create_builtins(),
             impls: HashMap::new(),
             current_function_return: None,
         };
@@ -186,17 +239,17 @@ impl TypeChecker {
                 match item {
                     ast::ModuleItem::Function(function) => {
                         let (func, fn_subst) = self.with_function(&ctx, &subst, function);
-                        subst = compose_substitutions(&subst, &fn_subst);
+                        subst = compose_substitutions(&ctx, &subst, &fn_subst);
                         ast::ModuleItem::Function(func)
                     },
                     ast::ModuleItem::TypeDeclaration(type_declaration) => {
                         let (ty_decl, ty_subst) = self.with_type_declaration(&ctx, type_declaration);
-                        subst = compose_substitutions(&subst, &ty_subst);
+                        subst = compose_substitutions(&ctx, &subst, &ty_subst);
                         ast::ModuleItem::TypeDeclaration(ty_decl)
                     },
                     ast::ModuleItem::Impl(impl_) => {
                         let (impl_result, impl_subst) = self.with_impl(&ctx, &subst, impl_);
-                        subst = compose_substitutions(&subst, &impl_subst);
+                        subst = compose_substitutions(&ctx, &subst, &impl_subst);
                         ast::ModuleItem::Impl(impl_result)
                     },
                 }
@@ -209,19 +262,21 @@ impl TypeChecker {
         // add args to env
         let mut function_ctx = ctx.set_current_function_return(&function.declaration.return_type.clone());
         for arg in function.declaration.arguments.iter() {
+            type_exists(ctx, &arg.type_);
             function_ctx = function_ctx.add_variable(arg.name.name.value.to_string(), &arg.type_.clone());
         }
+        type_exists(ctx, &function.declaration.return_type);
 
         let (block, substitution) = self.with_block(&function_ctx, incoming_substitutions, &function.block);
-        let mut substitution = compose_substitutions(incoming_substitutions, &substitution);
+        let mut substitution = compose_substitutions(&function_ctx, incoming_substitutions, &substitution);
         match &block.type_ {
             ast::TypeUsage::Named(named) => {
                 if named.name.name.value != "!" {
-                    substitution = compose_substitutions(&substitution, &unify(&function.declaration.return_type, &block.type_));
+                    substitution = compose_substitutions(&function_ctx, &substitution, &unify(&function_ctx, &function.declaration.return_type, &block.type_));
                 }
             },
             _ => {
-                substitution = compose_substitutions(&substitution, &unify(&function.declaration.return_type, &block.type_));
+                substitution = compose_substitutions(&function_ctx, &substitution, &unify(&function_ctx, &function.declaration.return_type, &block.type_));
             }
         }
 
@@ -257,6 +312,7 @@ impl TypeChecker {
         return ast::StructTypeDeclaration{
             name: struct_.name.clone(),
             fields: struct_.fields.iter().map(|field|{
+                type_exists(ctx, &field.type_);
                 ast::StructField{
                     name: field.name.clone(),
                     type_: field.type_.clone(),
@@ -267,11 +323,12 @@ impl TypeChecker {
 
     fn with_impl(self: &Self, ctx: &Context, incoming_substitutions: &SubstitutionMap, impl_: &ast::Impl) -> (ast::Impl, SubstitutionMap) {
         let mut substitutions = incoming_substitutions.clone();
+        type_exists(ctx, &ast::TypeUsage::new_named(impl_.struct_name.clone()));
         return (ast::Impl{
             struct_name: impl_.struct_name.clone(),
             functions: impl_.functions.iter().map(|f|{
                 let (result, function_subs) = self.with_function(&ctx, &substitutions, f);
-                substitutions = compose_substitutions(&substitutions, &function_subs);
+                substitutions = compose_substitutions(ctx, &substitutions, &function_subs);
                 result
             }).collect(),
         }, substitutions);
@@ -294,23 +351,23 @@ impl TypeChecker {
         let statements = block.statements.iter().map(|s| {
             let (statement_ctx, result, statement_substitutions) = self.with_statement(&block_ctx, &substitutions, s);
             block_ctx = statement_ctx;
-            substitutions = compose_substitutions(&substitutions, &statement_substitutions);
+            substitutions = compose_substitutions(&block_ctx, &substitutions, &statement_substitutions);
             result
         }).collect();
         if !has_return {
             match block.statements.last().unwrap() {
                 ast::Statement::Expression(expr) => {
-                    substitutions = compose_substitutions(&substitutions, &unify(&block.type_, &expr.type_));
+                    substitutions = compose_substitutions(&block_ctx, &substitutions, &unify(&block_ctx, &block.type_, &expr.type_));
                 },
                 _ => {
-                    substitutions = compose_substitutions(&substitutions, &unify(&block.type_, &ast::new_unit()));
+                    substitutions = compose_substitutions(&block_ctx, &substitutions, &unify(&block_ctx, &block.type_, &ast::new_unit()));
                 }
             }
         }
         let result_type = if has_return {
             ast::new_never()
         } else {
-            apply_substitution(&substitutions, &block.type_)
+            apply_substitution(&block_ctx, &substitutions, &block.type_)
         };
         let block_result = ast::Block{
             statements: statements,
@@ -323,22 +380,22 @@ impl TypeChecker {
         match statement {
             ast::Statement::Return(return_statement) => {
                 let (result, subst) = self.with_return_statement(ctx, incoming_substitutions, return_statement);
-                let subst = compose_substitutions(&incoming_substitutions, &subst);
+                let subst = compose_substitutions(ctx, &incoming_substitutions, &subst);
                 return (ctx.clone(), ast::Statement::Return(result), subst);
             },
             ast::Statement::Let(let_statement) => {
                 let (let_ctx, result, subst) = self.with_let_statement(ctx, incoming_substitutions, let_statement);
-                let subst = compose_substitutions(&incoming_substitutions, &subst);
+                let subst = compose_substitutions(ctx, &incoming_substitutions, &subst);
                 return (let_ctx, ast::Statement::Let(result), subst);
             },
             ast::Statement::Assignment(assignment_statement) => {
                 let (result, subst) = self.with_assignment_statement(ctx, incoming_substitutions, assignment_statement);
-                let subst = compose_substitutions(&incoming_substitutions, &subst);
+                let subst = compose_substitutions(ctx, &incoming_substitutions, &subst);
                 return (ctx.clone(), ast::Statement::Assignment(result), subst);
             },
             ast::Statement::Expression(expression) => {
                 let (result, subst) = self.with_expression(ctx, incoming_substitutions, expression);
-                let subst = compose_substitutions(&incoming_substitutions, &subst);
+                let subst = compose_substitutions(ctx, &incoming_substitutions, &subst);
                 return (ctx.clone(), ast::Statement::Expression(result), subst);
             },
         }
@@ -346,7 +403,7 @@ impl TypeChecker {
 
     fn with_return_statement(self: &Self, ctx: &Context, incoming_substitutions: &SubstitutionMap, statement: &ast::ReturnStatement) -> (ast::ReturnStatement, SubstitutionMap) {
         let (result, subst) = self.with_expression(ctx, incoming_substitutions, &statement.source);
-        let mut substitution = compose_substitutions(&incoming_substitutions, &subst);
+        let mut substitution = compose_substitutions(ctx, &incoming_substitutions, &subst);
         let mut is_never = false;
         match &result.type_ {
             ast::TypeUsage::Named(named) => {
@@ -357,7 +414,7 @@ impl TypeChecker {
             _ => {},
         }
         if !is_never {
-            substitution = compose_substitutions(&subst, &unify(&ctx.current_function_return.as_ref().unwrap(), &result.type_));
+            substitution = compose_substitutions(ctx, &subst, &unify(ctx, &ctx.current_function_return.as_ref().unwrap(), &result.type_));
         }
 
         return (ast::ReturnStatement{
@@ -368,35 +425,61 @@ impl TypeChecker {
     fn with_let_statement(self: &Self, ctx: &Context, incoming_substitutions: &SubstitutionMap, statement: &ast::LetStatement) -> (Context, ast::LetStatement, SubstitutionMap) {
         let (result, subst) = self.with_expression(ctx, incoming_substitutions, &statement.expression);
         let let_ctx = ctx.add_variable(statement.variable_name.name.value.clone(), &result.type_);
-        let substitution = compose_substitutions(&subst, &unify(&statement.type_, &result.type_));
+        let substitution = compose_substitutions(ctx, &subst, &unify(ctx, &statement.type_, &result.type_));
         return (let_ctx, ast::LetStatement{
             variable_name: statement.variable_name.clone(),
             expression: result,
-            type_: apply_substitution(&substitution, &statement.type_),
+            type_: apply_substitution(ctx, &substitution, &statement.type_),
         }, substitution);
     }
 
     fn with_assignment_statement(self: &Self, ctx: &Context, incoming_substitutions: &SubstitutionMap, statement: &ast::AssignmentStatement) -> (ast::AssignmentStatement, SubstitutionMap) {
         let (expr, subst) = self.with_expression(ctx, incoming_substitutions, &statement.expression);
-        let mut substitution = compose_substitutions(&incoming_substitutions, &subst);
+        let mut substitution = compose_substitutions(ctx, &incoming_substitutions, &subst);
 
         let result_as = ast::AssignmentStatement{
             source: match &statement.source {
                 ast::AssignmentTarget::Variable(variable) => {
-                    substitution = compose_substitutions(&substitution, &unify(&variable.type_, &expr.type_));
+                    substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &variable.type_, &expr.type_));
                     ast::AssignmentTarget::Variable(ast::VariableUsage{
                         name: variable.name.clone(),
-                        type_: apply_substitution(&substitution, &variable.type_),
+                        type_: apply_substitution(ctx, &substitution, &variable.type_),
                     })
                 },
                 ast::AssignmentTarget::StructAttr(struct_attr) => {
                     let (source, subst) = self.with_expression(ctx, &substitution, &struct_attr.source);
-                    // TODO: match source attr with type
-                    let substitution = compose_substitutions(&compose_substitutions(&substitution, &subst), &unify(&struct_attr.type_, &expr.type_));
+                    let mut subst = subst.clone();
+
+                    match &source.type_ {
+                        ast::TypeUsage::Named(named) => {
+                            match &ctx.environment[&named.name.name.value] {
+                                NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(type_declaration)) => {
+                                    let mut found = false;
+                                    for field in type_declaration.fields.iter() {
+                                        if field.name.name.value == struct_attr.attribute.name.value {
+                                            found = true;
+                                            subst = compose_substitutions(ctx, &subst, &unify(ctx, &struct_attr.type_, &field.type_));
+                                        }
+                                    }
+                                    if !found {
+                                        panic!("unknown field name")
+                                    }
+
+                                },
+                                _ => panic!("struct getter being used on non-struct")
+                            }
+                        },
+                        ast::TypeUsage::Function(_) => {
+                            panic!("function used with attr")
+                        },
+                        _ => {} // skip unifying if struct type is unknown1
+                    }
+
+                    let substitution = compose_substitutions(ctx, &compose_substitutions(ctx, &substitution, &subst), &unify(ctx, &struct_attr.type_, &expr.type_));
                     ast::AssignmentTarget::StructAttr(ast::StructGetter{
                         source: source,
                         attribute: struct_attr.attribute.clone(),
-                        type_: apply_substitution(&substitution, &struct_attr.type_),
+                        type_: apply_substitution(ctx, &substitution, &struct_attr.type_),
                     })
                 },
             },
@@ -409,50 +492,58 @@ impl TypeChecker {
         let mut substitution = incoming_substitutions.clone();
         let subexpression = Box::new(match &*expression.subexpression {
             ast::Subexpression::LiteralInt(literal_int) => {
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &literal_int.type_));
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &literal_int.type_));
                 ast::Subexpression::LiteralInt(ast::LiteralInt{
                     value: literal_int.value.clone(),
-                    type_: apply_substitution(&substitution, &literal_int.type_),
+                    type_: apply_substitution(ctx, &substitution, &literal_int.type_),
                 })
             },
             ast::Subexpression::LiteralFloat(literal_float) => {
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &literal_float.type_));
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &literal_float.type_));
                 ast::Subexpression::LiteralFloat(ast::LiteralFloat{
                     value: literal_float.value.clone(),
-                    type_: apply_substitution(&substitution, &literal_float.type_),
+                    type_: apply_substitution(ctx, &substitution, &literal_float.type_),
                 })
             },
             ast::Subexpression::LiteralStruct(literal_struct) => {
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &literal_struct.type_));
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &literal_struct.type_));
                 let type_declaration = match &ctx.environment[&literal_struct.name.name.value] {
                     NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(type_declaration)) => {
                         type_declaration
                     },
                     _ => {panic!("literal struct used with non struct name")}
                 };
+                if type_declaration.fields.len() != literal_struct.fields.len() {
+                    panic!("literal type declaration has mismatched fields");
+                }
                 ast::Subexpression::LiteralStruct(ast::LiteralStruct{
                     name: literal_struct.name.clone(),
-                    fields: literal_struct.fields.iter().map(|field|{
-                        let (result, subst) = self.with_expression(ctx, &substitution, &field.1);
-
-                        for type_field in type_declaration.fields.iter() {
+                    fields: type_declaration.fields.iter().map(|type_field|{
+                        let mut found = false;
+                        let mut field_expression: Option<ast::Expression> = None;
+                        for field in literal_struct.fields.iter() {
                             if type_field.name.name.value == field.0.name.value {
-                                substitution = compose_substitutions(&substitution, &unify(&type_field.type_, &result.type_));
+                                found = true;
+                                let (result, subst) = self.with_expression(ctx, &substitution, &field.1);
+                                substitution = compose_substitutions(ctx, &substitution, &subst);
+                                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &type_field.type_, &result.type_));
+                                field_expression = Some(result);
                             }
                         }
-
-                        substitution = compose_substitutions(&substitution, &subst);
-                        (field.0.clone(), result)
+                        if !found {
+                            panic!("missing field: {}", &type_field.name.name.value);
+                        }
+                        (type_field.name.clone(), field_expression.unwrap())
                     }).collect(),
-                    type_: apply_substitution(&substitution, &literal_struct.type_),
+                    type_: apply_substitution(ctx, &substitution, &literal_struct.type_),
                 })
             },
             ast::Subexpression::FunctionCall(function_call) => {
                 let (source, subst) = self.with_expression(ctx, &substitution, &function_call.source);
-                substitution = compose_substitutions(&substitution, &subst);
+                substitution = compose_substitutions(ctx, &substitution, &subst);
                 match &source.type_ {
                     ast::TypeUsage::Function(fn_type) => {
-                        substitution = compose_substitutions(&substitution, &unify(&function_call.type_, &*fn_type.return_type));
+                        substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &function_call.type_, &*fn_type.return_type));
                         if function_call.arguments.len() != fn_type.arguments.len() {
                             panic!("mismatched function argument count");
                         }
@@ -460,23 +551,23 @@ impl TypeChecker {
                     ast::TypeUsage::Named(_) => panic!("FunctionCall doesn't have function type."),
                     _ => {},
                 }
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &function_call.type_));
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &function_call.type_));
                 ast::Subexpression::FunctionCall(ast::FunctionCall{
                     source: source.clone(),
                     arguments: function_call.arguments.iter().enumerate().map(|(i, arg)| {
                         let (result, subst) = self.with_expression(ctx, &substitution, arg);
-                        substitution = compose_substitutions(&substitution, &subst);
+                        substitution = compose_substitutions(ctx, &substitution, &subst);
 
                         match &source.type_ {
                             ast::TypeUsage::Function(fn_type) => {
-                                substitution = compose_substitutions(&substitution, &unify(&fn_type.arguments[i], &result.type_));
+                                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &fn_type.arguments[i], &result.type_));
                             },
                             ast::TypeUsage::Named(_) => panic!("FunctionCall doesn't have function type."),
                             _ => {},
                         }
                         result
                     }).collect(),
-                    type_: apply_substitution(&substitution, &function_call.type_),
+                    type_: apply_substitution(ctx, &substitution, &function_call.type_),
                 })
             },
             ast::Subexpression::VariableUsage(variable_usage) => {
@@ -485,18 +576,18 @@ impl TypeChecker {
                         panic!("Using types not yet supported");
                     },
                     NamedEntity::Variable(variable) => {
-                        substitution = compose_substitutions(&substitution, &unify(&variable_usage.type_, &variable));
-                        substitution = compose_substitutions(&substitution, &unify(&expression.type_, &variable_usage.type_));
+                        substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &variable_usage.type_, &variable));
+                        substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &variable_usage.type_));
                     },
                 }
                 ast::Subexpression::VariableUsage(ast::VariableUsage{
                     name: variable_usage.name.clone(),
-                    type_: apply_substitution(&substitution, &variable_usage.type_),
+                    type_: apply_substitution(ctx, &substitution, &variable_usage.type_),
                 })
             },
             ast::Subexpression::StructGetter(struct_getter) => {
                 let (source, subst) = self.with_expression(ctx, &substitution, &struct_getter.source);
-                substitution = compose_substitutions(&substitution, &subst);
+                substitution = compose_substitutions(ctx, &substitution, &subst);
 
                 match &source.type_ {
                     ast::TypeUsage::Named(named) => {
@@ -506,13 +597,11 @@ impl TypeChecker {
                                 for field in type_declaration.fields.iter() {
                                     if field.name.name.value == struct_getter.attribute.name.value {
                                         found = true;
-                                        substitution = compose_substitutions(&substitution, &unify(&struct_getter.type_, &field.type_));
+                                        substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &struct_getter.type_, &field.type_));
                                     }
                                 }
                                 if !found {
-                                    println!("foo: {:?} {:?}", &type_declaration.name.name.value, struct_getter.attribute.name.value);
                                     for method in ctx.impls[&type_declaration.name.name.value].functions.iter() {
-                                        println!("foo: {:?} {:?}", &method.declaration.name.name.value, struct_getter.attribute.name.value);
                                         if method.declaration.name.name.value == struct_getter.attribute.name.value {
                                             let mut function_type = ast::FunctionTypeUsage{
                                                 arguments: method.declaration.arguments.iter().map(|arg|{arg.type_.clone()}).collect(),
@@ -534,7 +623,7 @@ impl TypeChecker {
                                             }
 
                                             println!("found: {:?}", &function_type);
-                                            substitution = compose_substitutions(&substitution, &unify(&struct_getter.type_, &ast::TypeUsage::Function(function_type)));
+                                            substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &struct_getter.type_, &ast::TypeUsage::Function(function_type)));
                                             found = true;
                                         }
                                     }
@@ -553,28 +642,27 @@ impl TypeChecker {
                     _ => {} // skip unifying if struct type is unknown1
                 }
 
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &struct_getter.type_));
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &struct_getter.type_));
 
                 ast::Subexpression::StructGetter(ast::StructGetter{
                     source: source,
                     attribute: struct_getter.attribute.clone(),
-                    type_: apply_substitution(&substitution, &struct_getter.type_),
+                    type_: apply_substitution(ctx, &substitution, &struct_getter.type_),
                 })
             },
             ast::Subexpression::Block(block) => {
                 let (result, subst) = self.with_block(ctx, &substitution, &block);
-                substitution = compose_substitutions(&substitution, &subst);
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &result.type_));
-                println!("foo {:?} {:?}", &expression.type_, &block.type_);
+                substitution = compose_substitutions(ctx, &substitution, &subst);
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &result.type_));
                 ast::Subexpression::Block(result)
             },
             ast::Subexpression::Op(op) => {
                 let (expr_left, subst_left) = self.with_expression(ctx, &substitution, &op.left);
                 let (expr_right, subst_right) = self.with_expression(ctx, &substitution, &op.right);
-                substitution = compose_substitutions(&substitution, &subst_left);
-                substitution = compose_substitutions(&substitution, &subst_right);
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &expr_left.type_));
-                substitution = compose_substitutions(&substitution, &unify(&expression.type_, &expr_right.type_));
+                substitution = compose_substitutions(ctx, &substitution, &subst_left);
+                substitution = compose_substitutions(ctx, &substitution, &subst_right);
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &expr_left.type_));
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &expr_right.type_));
                 ast::Subexpression::Op(ast::Operation{
                     left: expr_left,
                     op: op.op.clone(),
@@ -585,7 +673,7 @@ impl TypeChecker {
 
         let expr = ast::Expression{
             subexpression: subexpression,
-            type_: apply_substitution(&substitution, &expression.type_),
+            type_: apply_substitution(ctx, &substitution, &expression.type_),
         };
         return (expr, substitution);
     }

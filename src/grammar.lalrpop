@@ -37,7 +37,7 @@ pub LiteralInt: String = {
 };
 
 pub SpannedLiteralInt: ast::LiteralInt = {
-    <literal_int:Spanned<LiteralInt>> => ast::LiteralInt{value: literal_int, type_: ast::TypeUsage::new_builtin("I64".to_string())}
+    <literal_int:Spanned<LiteralInt>> => ast::LiteralInt{value: literal_int, type_: ast::TypeUsage::new_builtin("i64".to_string())}
 };
 
 pub LiteralFloat: String = {
@@ -45,7 +45,7 @@ pub LiteralFloat: String = {
 };
 
 pub SpannedLiteralFloat: ast::LiteralFloat = {
-    <literal_float:Spanned<LiteralFloat>> => ast::LiteralFloat{value: literal_float, type_: ast::TypeUsage::new_builtin("F64".to_string())}
+    <literal_float:Spanned<LiteralFloat>> => ast::LiteralFloat{value: literal_float, type_: ast::TypeUsage::new_builtin("f64".to_string())}
 };
 
 pub Identifier: String = {

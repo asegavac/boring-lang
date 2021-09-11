@@ -20,7 +20,7 @@ pub fn new_unit() -> TypeUsage {
         name: Identifier{
             name: Spanned{
                 span: Span{left: 0, right: 0}, //todo: figure out a sane value for these
-                value: "()".to_string(),
+                value: "unit".to_string(),
             }
         }
     })

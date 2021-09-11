@@ -1,22 +1,22 @@
 // adds a and b, but also 4 for some reason
-fn add(a: I64, b: I64): I64 {
+fn add(a: i64, b: i64): i64 {
     let foo = 4; // because I feel like it
-    let test_float: F64 = {
+    let test_float: f64 = {
       10.2
     };
     test_float = 5.0;
     a + b + foo
 }
 
-fn subtract(a: I64, b: I64): I64 {
+fn subtract(a: i64, b: i64): i64 {
     a - b
 }
 
-fn return_type_test(a: F64): F64 {
+fn return_type_test(a: f64): f64 {
     return a * 2.0;
 }
 
-fn i_hate_this(a: F64): F64 {
+fn i_hate_this(a: f64): f64 {
     return {
         return {
             return a;
@@ -25,10 +25,10 @@ fn i_hate_this(a: F64): F64 {
 }
 
 fn unit_function() {
-  let a: I64 = 4;
+  let a: i64 = 4;
 }
 
-fn main(): I64 {
+fn main(): i64 {
     add(4, subtract(5, 2))
 }
 
@@ -39,45 +39,45 @@ fn returns_user(): User {
     };
 }
 
-fn get_user_id(): I64 {
+fn get_user_id(): i64 {
     let user = returns_user();
     user.id = 5;
     return user.id;
 }
 
-fn use_method(user: User): I64 {
+fn use_method(user: User): i64 {
     return user.get_id();
 }
 
 type User struct {
-    id: I64,
+    id: i64,
 }
 
 impl User {
-    fn new(id: I64): Self {
+    fn new(id: i64): Self {
         return Self{
             id: id,
         };
     }
 
-    fn get_id(self: Self): I64 {
+    fn get_id(self: Self): i64 {
         return self.id;
     }
 }
 
 // type TestTrait trait {
-//     fn classMethod(id: I64): Self;
-//     fn instanceMethod(self: Self): I64;
-//     fn defaultImpl(self: Self): I64 {
+//     fn classMethod(id: i64): Self;
+//     fn instanceMethod(self: Self): i64;
+//     fn defaultImpl(self: Self): i64 {
 //         return self.instanceMethod;
 //     }
 // }
 //
 // impl TestTrait for User {
-//     fn classMethod(id: I64): Self {
+//     fn classMethod(id: i64): Self {
 //         return User{id: id,};
 //     }
-//     fn instanceMethod(self: Self): I64 {
+//     fn instanceMethod(self: Self): i64 {
 //         return self.get_id();
 //     }
 // }
