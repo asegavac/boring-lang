@@ -1,5 +1,6 @@
 // mod types;
 mod ast;
+mod errors;
 mod type_alias_resolution;
 mod type_checking;
 #[macro_use]
@@ -60,9 +61,16 @@ fn main() {
     let resolved_ast = alias_resolver.with_module(&module_ast);
     println!("resolved ast: {:#?}", &resolved_ast);
     let type_checker = type_checking::TypeChecker {};
-    let (checked_ast, subst) = type_checker.with_module(&resolved_ast);
-    println!("checked ast: {:#?}", &checked_ast);
-    println!("substitutions: {:#?}", &subst);
+    let type_checking_result = type_checker.with_module(&resolved_ast);
+    match &type_checking_result {
+        Ok((checked_ast, subst)) => {
+            println!("checked ast: {:#?}", &checked_ast);
+            println!("substitutions: {:#?}", &subst);
+        }
+        Err(err) => {
+            println!("type checking error: {:#?}", &err);
+        }
+    }
 
     // let context = Context::create();
     // let mut code_gen = compiler::ModuleCodeGen::new(&context, "main".to_string());
@@ -137,5 +145,10 @@ fn grammar() {
     assert!(grammar::ModuleParser::new()
         .parse(&id_gen, "fn add(a: i32, b: i32): i32 { a + b }")
         .is_ok());
-    assert!(grammar::ModuleParser::new().parse(&id_gen, "fn add(a: i32, b: i32): i32 { a + b } fn subtract(a: i32, b: i32): i32 { a - b }").is_ok());
+    assert!(grammar::ModuleParser::new()
+        .parse(
+            &id_gen,
+            "fn add(a: i32, b: i32): i32 { a + b } fn subtract(a: i32, b: i32): i32 { a - b }"
+        )
+        .is_ok());
 }
