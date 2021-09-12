@@ -9,9 +9,7 @@ extern crate lalrpop_util;
 lalrpop_mod!(pub grammar); // synthesized by LALRPOP
 
 use std::fs;
-use std::io::Write;
-// mod compiler;
-// use inkwell::context::Context;
+
 extern crate clap;
 use clap::{App, Arg};
 
@@ -49,7 +47,7 @@ fn main() {
         .last()
         .unwrap()
         .clone();
-    let output = matches.value_of("OUTPUT").unwrap_or(default_output);
+    let _output = matches.value_of("OUTPUT").unwrap_or(default_output);
 
     let contents = fs::read_to_string(input).expect("input file not found");
     let unknown_id_gen = ast::IdGenerator::new();

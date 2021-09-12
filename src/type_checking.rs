@@ -148,15 +148,6 @@ impl Context {
         return ctx;
     }
 
-    fn add_type(&self, name: String, type_decl: &ast::TypeDeclaration) -> Context {
-        let mut ctx = self.clone();
-        ctx.environment.insert(
-            name.to_string(),
-            NamedEntity::TypeDeclaration(type_decl.clone()),
-        );
-        return ctx;
-    }
-
     fn set_current_function_return(&self, function: &ast::TypeUsage) -> Context {
         let mut ctx = self.clone();
         ctx.current_function_return = Some(function.clone());
@@ -183,7 +174,7 @@ fn type_exists(ctx: &Context, type_: &ast::TypeUsage) -> Result<()> {
                 }
             }
         }
-        ast::TypeUsage::Unknown(unknown) => {} // do nothing
+        ast::TypeUsage::Unknown(_) => {} // do nothing
         ast::TypeUsage::Function(function) => {
             let mut errs = vec![];
             for arg in function.arguments.iter() {

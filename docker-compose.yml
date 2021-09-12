@@ -4,9 +4,3 @@ services:
     build: .
     volumes:
       - .:/code/
-  # boring-python:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile-python
-  #   volumes:
-  #     - .:/code/

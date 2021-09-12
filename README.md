@@ -2,10 +2,10 @@
 
 The Boring Programming Language (Boring-Lang) is an attempt to create an easy, productive, general purpose programming language that makes as few interesting choices as possible while still being in line with modern concepts in programming languages.
 
-The language:
+The language (goals):
 * is compiled with a run-time (llvm for convenience + c/rust compatibility)
 * has managed memory (via strong/weak pointers and automatic reference counting)
-* uses async-await for all IO, with a built-in multi-core scheduler (tokio)
+* uses async-await for all IO, with a built-in multi-core scheduler (tokio-based)
 * supports algebraic data types (Result type for errors, Maybe/Optional type for nullables)
 * supports parametric polymorphism (generics) with higher kinded types
 * uses struct+traits, rather than classes or stuct+interfaces
