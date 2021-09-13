@@ -1,6 +1,7 @@
 // mod types;
 mod ast;
 mod errors;
+mod interpreter;
 mod type_alias_resolution;
 mod type_checking;
 #[macro_use]
@@ -64,6 +65,9 @@ fn main() {
         Ok((checked_ast, subst)) => {
             println!("checked ast: {:#?}", &checked_ast);
             println!("substitutions: {:#?}", &subst);
+            let interpreter = interpreter::TreeWalkInterpreter {};
+            let result = interpreter.with_module(&checked_ast);
+            println!("final result: {:#?}", &result);
         }
         Err(err) => {
             println!("type checking error: {:#?}", &err);

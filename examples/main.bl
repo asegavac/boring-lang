@@ -65,6 +65,10 @@ impl User {
     }
 }
 
+fn main(): i64 {
+  add(4, 4)
+}
+
 // type TestTrait trait {
 //     fn classMethod(id: i64): Self;
 //     fn instanceMethod(self: Self): i64;
