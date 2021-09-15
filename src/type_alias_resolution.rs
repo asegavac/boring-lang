@@ -258,6 +258,12 @@ impl TypeAliasResolver {
                         type_: process_type(ctx, &literal_float.type_),
                     })
                 }
+                ast::Subexpression::LiteralBool(literal_bool) => {
+                    ast::Subexpression::LiteralBool(ast::LiteralBool {
+                        value: literal_bool.value.clone(),
+                        type_: process_type(ctx, &literal_bool.type_),
+                    })
+                }
                 ast::Subexpression::LiteralStruct(literal_struct) => {
                     let result = resolve_type(
                         ctx,
@@ -294,6 +300,17 @@ impl TypeAliasResolver {
                     ast::Subexpression::VariableUsage(ast::VariableUsage {
                         name: variable_usage.name.clone(),
                         type_: process_type(ctx, &variable_usage.type_),
+                    })
+                }
+                ast::Subexpression::If(if_expression) => {
+                    ast::Subexpression::If(ast::IfExpression {
+                        condition: self.with_expression(ctx, &if_expression.condition),
+                        block: self.with_block(ctx, &if_expression.block),
+                        else_: match &if_expression.else_ {
+                            Some(else_) => Some(self.with_block(ctx, else_)),
+                            None => None,
+                        },
+                        type_: process_type(ctx, &if_expression.type_),
                     })
                 }
                 ast::Subexpression::StructGetter(struct_getter) => {

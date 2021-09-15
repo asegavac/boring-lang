@@ -121,6 +121,15 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     );
 
     result.insert(
+        "bool".to_string(),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
+            ast::PrimitiveTypeDeclaration {
+                name: "bool".to_string(),
+            },
+        )),
+    );
+
+    result.insert(
         "!".to_string(),
         NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
             ast::PrimitiveTypeDeclaration {
@@ -132,7 +141,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
         "unit".to_string(),
         NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
             ast::PrimitiveTypeDeclaration {
-                name: "!".to_string(),
+                name: "unit".to_string(),
             },
         )),
     );
@@ -798,6 +807,17 @@ impl TypeChecker {
                     type_: apply_substitution(ctx, &substitution, &literal_float.type_)?,
                 })
             }
+            ast::Subexpression::LiteralBool(literal_bool) => {
+                substitution = compose_substitutions(
+                    ctx,
+                    &substitution,
+                    &unify(ctx, &expression.type_, &literal_bool.type_)?,
+                )?;
+                ast::Subexpression::LiteralBool(ast::LiteralBool {
+                    value: literal_bool.value.clone(),
+                    type_: apply_substitution(ctx, &substitution, &literal_bool.type_)?,
+                })
+            }
             ast::Subexpression::LiteralStruct(literal_struct) => {
                 substitution = compose_substitutions(
                     ctx,
@@ -924,6 +944,109 @@ impl TypeChecker {
                 ast::Subexpression::VariableUsage(ast::VariableUsage {
                     name: variable_usage.name.clone(),
                     type_: apply_substitution(ctx, &substitution, &variable_usage.type_)?,
+                })
+            }
+            ast::Subexpression::If(if_expression) => {
+                let (condition, subst) =
+                    self.with_expression(ctx, &substitution, &if_expression.condition)?;
+                substitution = compose_substitutions(ctx, &substitution, &subst)?;
+
+                let (block_result, subst) =
+                    self.with_block(ctx, &substitution, &if_expression.block)?;
+                substitution = compose_substitutions(ctx, &substitution, &subst)?;
+
+                let else_ = match &if_expression.else_ {
+                    Some(else_) => {
+                        let (result, subst) = self.with_block(ctx, &substitution, else_)?;
+                        substitution = compose_substitutions(ctx, &substitution, &subst)?;
+                        Some(result)
+                    }
+                    None => None,
+                };
+
+                match &condition.type_ {
+                    ast::TypeUsage::Named(named) => {
+                        if named.name.name.value != "bool" {
+                            return Err(errors::TypingError::IfConditionMustBeBool {});
+                        }
+                    }
+                    ast::TypeUsage::Function(_) => {
+                        return Err(errors::TypingError::IfConditionMustBeBool {});
+                    }
+                    _ => {}
+                };
+
+                let mut never_count = 0;
+                match &block_result.type_ {
+                    ast::TypeUsage::Named(named) => {
+                        if named.name.name.value != "!" {
+                            substitution = compose_substitutions(
+                                ctx,
+                                &substitution,
+                                &unify(ctx, &if_expression.type_, &block_result.type_)?,
+                            )?;
+                        } else {
+                            never_count += 1;
+                        }
+                    }
+                    _ => {
+                        substitution = compose_substitutions(
+                            ctx,
+                            &substitution,
+                            &unify(ctx, &if_expression.type_, &block_result.type_)?,
+                        )?;
+                    }
+                };
+
+                match &else_ {
+                    Some(else_block) => {
+                        match &else_block.type_ {
+                            ast::TypeUsage::Named(named) => {
+                                if named.name.name.value != "!" {
+                                    substitution = compose_substitutions(
+                                        ctx,
+                                        &substitution,
+                                        &unify(ctx, &if_expression.type_, &else_block.type_)?,
+                                    )?;
+                                } else {
+                                    never_count += 1;
+                                }
+                            }
+                            _ => {
+                                substitution = compose_substitutions(
+                                    ctx,
+                                    &substitution,
+                                    &unify(ctx, &if_expression.type_, &else_block.type_)?,
+                                )?;
+                            }
+                        };
+                    }
+                    None => {
+                        substitution = compose_substitutions(
+                            ctx,
+                            &substitution,
+                            &unify(ctx, &if_expression.type_, &ast::new_unit())?,
+                        )?;
+                    }
+                }
+
+                let result_type = if never_count == 2 {
+                    ast::new_never()
+                } else {
+                    apply_substitution(ctx, &substitution, &if_expression.type_)?
+                };
+
+                substitution = compose_substitutions(
+                    ctx,
+                    &substitution,
+                    &unify(ctx, &expression.type_, &result_type)?,
+                )?;
+
+                ast::Subexpression::If(ast::IfExpression {
+                    condition: condition,
+                    block: block_result,
+                    else_: else_,
+                    type_: result_type,
                 })
             }
             ast::Subexpression::StructGetter(struct_getter) => {

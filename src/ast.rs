@@ -129,6 +129,12 @@ pub struct LiteralFloat {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LiteralBool {
+    pub value: Spanned<String>,
+    pub type_: TypeUsage,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralStruct {
     pub name: Identifier,
     pub fields: Vec<(Identifier, Expression)>,
@@ -168,12 +174,22 @@ pub struct VariableUsage {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct IfExpression {
+    pub condition: Expression,
+    pub block: Block,
+    pub else_: Option<Block>,
+    pub type_: TypeUsage,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subexpression {
     LiteralInt(LiteralInt),
     LiteralFloat(LiteralFloat),
+    LiteralBool(LiteralBool),
     LiteralStruct(LiteralStruct),
     FunctionCall(FunctionCall),
     VariableUsage(VariableUsage),
+    If(IfExpression),
     StructGetter(StructGetter),
     Block(Block),
     Op(Operation),

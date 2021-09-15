@@ -31,6 +31,10 @@ pub enum TypingError {
     FunctionCallNotAFunction {
         // TODO: add position
     },
+    #[error("`if` condition must be bool")]
+    IfConditionMustBeBool {
+        // TODO: add position
+    },
     #[error("multiple errors")]
     MultipleErrors { errors: Vec<TypingError> },
 }

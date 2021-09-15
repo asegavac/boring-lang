@@ -20,6 +20,10 @@ match {
     "fn",
     "return",
     "let",
+    "true",
+    "false",
+    "if",
+    "else",
     "=",
     "type",
     "struct",
@@ -45,6 +49,15 @@ pub LiteralFloat: String = {
 
 pub SpannedLiteralFloat: ast::LiteralFloat = {
     <literal_float:Spanned<LiteralFloat>> => ast::LiteralFloat{value: literal_float, type_: ast::TypeUsage::new_builtin("f64".to_string())}
+};
+
+pub LiteralBool: String = {
+    "true" => "true".to_string(),
+    "false" => "false".to_string(),
+};
+
+pub SpannedLiteralBool: ast::LiteralBool = {
+    <literal_bool:Spanned<LiteralBool>> => ast::LiteralBool{value: literal_bool, type_: ast::TypeUsage::new_builtin("bool".to_string())}
 };
 
 pub Identifier: String = {
@@ -77,6 +90,11 @@ pub StructGetter: ast::StructGetter = {
 
 pub VariableUsage: ast::VariableUsage = {
     <identifier:SpannedIdentifier> => ast::VariableUsage{name: identifier, type_: ast::TypeUsage::new_unknown(&id_generator)}
+};
+
+pub IfExpression: ast::IfExpression = {
+    "if" "("<c:Expression>")" <b:Block> => ast::IfExpression{condition: c, block: b, else_: None, type_: ast::TypeUsage::new_unknown(&id_generator)},
+    "if" "("<c:Expression>")" <b:Block> "else" <e:Block> => ast::IfExpression{condition: c, block: b, else_: Some(e), type_: ast::TypeUsage::new_unknown(&id_generator)},
 };
 
 pub Expression: ast::Expression = {
@@ -114,10 +132,12 @@ pub Factor: ast::Expression = {
 pub Term: ast::Expression = {
     SpannedLiteralInt => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralInt(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     SpannedLiteralFloat => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralFloat(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
+    SpannedLiteralBool => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralBool(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     LiteralStruct => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralStruct(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     FunctionCall => ast::Expression{subexpression: Box::new(ast::Subexpression::FunctionCall(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     StructGetter => ast::Expression{subexpression: Box::new(ast::Subexpression::StructGetter(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     VariableUsage => ast::Expression{subexpression: Box::new(ast::Subexpression::VariableUsage(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
+    IfExpression => ast::Expression{subexpression: Box::new(ast::Subexpression::If(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     Block => ast::Expression{subexpression: Box::new(ast::Subexpression::Block(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     "(" <e:Expression> ")" => e,
 };

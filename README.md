@@ -38,7 +38,7 @@ This language is under active development, progress will be marked here as the l
   - [ ] Higher kinded types
   - [ ] Variadic generic types
 - [ ] Control Flow
-  - [ ] If
+  - [x] If
   - [ ] While
   - [ ] For
 - [ ] Enums

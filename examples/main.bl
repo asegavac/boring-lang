@@ -65,8 +65,20 @@ impl User {
     }
 }
 
+fn if_expression(): i64 {
+  if (true) {
+    return 6;
+  } else {
+    return 9;
+  }
+}
+
 fn main(): i64 {
-  add(4, 4)
+  if (false) {
+    add(4, 4)
+  } else {
+    61
+  }
 }
 
 // type TestTrait trait {

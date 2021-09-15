@@ -55,10 +55,10 @@ fn main() {
     let module_ast = grammar::ModuleParser::new()
         .parse(&unknown_id_gen, &contents)
         .unwrap(); //TODO: convert to error
-    println!("ast: {:#?}", &module_ast);
+                   // println!("ast: {:#?}", &module_ast);
     let alias_resolver = type_alias_resolution::TypeAliasResolver {};
     let resolved_ast = alias_resolver.with_module(&module_ast);
-    println!("resolved ast: {:#?}", &resolved_ast);
+    // println!("resolved ast: {:#?}", &resolved_ast);
     let type_checker = type_checking::TypeChecker {};
     let type_checking_result = type_checker.with_module(&resolved_ast);
     match &type_checking_result {

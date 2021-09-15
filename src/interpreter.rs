@@ -37,6 +37,7 @@ pub enum Function {
 #[derive(Debug, Clone)]
 pub enum Value {
     Numeric(NumericValue),
+    Bool(bool),
     Function(Function),
     Struct(Arc<Mutex<StructValue>>),
     Unit,
@@ -205,6 +206,15 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     );
 
     result.insert(
+        "bool".to_string(),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
+            ast::PrimitiveTypeDeclaration {
+                name: "bool".to_string(),
+            },
+        )),
+    );
+
+    result.insert(
         "!".to_string(),
         NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
             ast::PrimitiveTypeDeclaration {
@@ -351,6 +361,14 @@ impl TreeWalkInterpreter {
                 let value: f64 = literal_float.value.value.parse().unwrap();
                 return ExpressionResult::Value(Value::Numeric(NumericValue::F64(value)));
             }
+            ast::Subexpression::LiteralBool(literal_bool) => {
+                let value: bool = if &literal_bool.value.value == "true" {
+                    true
+                } else {
+                    false
+                };
+                return ExpressionResult::Value(Value::Bool(value));
+            }
             ast::Subexpression::LiteralStruct(literal_struct) => {
                 let declaration = match &ctx.environment[&literal_struct.name.name.value] {
                     NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(declaration)) => {
@@ -422,6 +440,28 @@ impl TreeWalkInterpreter {
                     _ => panic!("variable lookup of type"),
                 };
                 return ExpressionResult::Value(variable_value);
+            }
+            ast::Subexpression::If(if_expression) => {
+                let condition = match self.with_expression(ctx, &if_expression.condition) {
+                    ExpressionResult::Value(r) => r,
+                    ExpressionResult::Return(r) => {
+                        return ExpressionResult::Return(r);
+                    }
+                };
+
+                match &condition {
+                    Value::Bool(cond) => {
+                        if cond.clone() {
+                            return self.with_block(ctx, &if_expression.block);
+                        } else {
+                            return match &if_expression.else_ {
+                                Some(else_) => self.with_block(ctx, else_),
+                                None => ExpressionResult::Value(Value::Unit),
+                            };
+                        }
+                    }
+                    _ => panic!("TypeError: condition must be bool"),
+                }
             }
             ast::Subexpression::StructGetter(struct_getter) => {
                 let source = match self.with_expression(ctx, &struct_getter.source) {
