@@ -139,7 +139,7 @@ pub fn tracing_middleware[Ctx: Tracing](handler: HTTPRequest[Ctx]): HTTPRequest 
 
 pub fn auth_middleware[Ctx: Auth](handler: HTTPRequest[Ctx], scope: Str): HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
-    if ctx.has_scope(scope) {
+    if (ctx.has_scope(scope)) {
       await handler(ctx, req, resp);
     }
     await resp.set_status(403);
@@ -149,7 +149,7 @@ pub fn auth_middleware[Ctx: Auth](handler: HTTPRequest[Ctx], scope: Str): HTTPRe
 
 pub fn cancel_middleware[Ctx: Cancel](handler: HTTPRequest[Ctx]): HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
-    if !(await ctx.is_cancelled()) { // check cancel token
+    if (!(await ctx.is_cancelled())) { // check cancel token
       await handler(ctx, req, resp);
     }
     await resp.set_status(400);
@@ -162,7 +162,7 @@ for the above examples, you would pass a context type that implements all three 
 
 ## Sandboxing
 
-Unlike many other programming languages, boringlang's `main` function take in two arguments, a vector of command line arguments, and a reference to the OS which is the program's only link to the outside world. To open a file in boringlang, you cannot just open it anywhere, you *must* call `os.fs().open("path")`. All `os.whatever()` methods return an interface for interacting with that part of the OS, such as `fs`, `net`, `datetime`, and `syscall`. Because this is the only way to interact with the world outside of the program, this means that any IO the program does can be trivially mocked for testing, and that all operations the program can perform are sandboxed. If a function doesn't require a reference to the `FS` trait, you can be sure it doesn't interact with the file system.
+Unlike many other programming languages, boringlang's `main` function takes in two arguments: a vector of command line arguments, and a reference to the OS which is the program's only link to the outside world. To open a file in boringlang, you cannot just call `open` anywhere, you *must* call `os.fs().open("path")`. All `os.whatever()` methods return an interface for interacting with that part of the OS, such as `fs`, `net`, `datetime`, and `syscall`. Because this is the only way to interact with the world outside of the program, this means that any IO the program does can be trivially mocked for testing, and that all operations the program can perform are sandboxed. If a function doesn't require a reference to the `FS` trait, you can be sure it doesn't interact with the file system.
 
 ## Import System
 
@@ -183,7 +183,7 @@ pub type MyStruct struct {
 `if` is an expression in boring-lang, with the last expression in a block being the return value.
 
 ```rust
-let a = if true {
+let a = if (true) {
   4
 } else {
   2
