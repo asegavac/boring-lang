@@ -58,8 +58,7 @@ struct Context {
 
 impl Context {
     fn set_variable(&mut self, name: String, value: &Value) {
-        self.environment
-            .insert(name.to_string(), NamedEntity::Variable(value.clone()));
+        self.environment.insert(name.to_string(), NamedEntity::Variable(value.clone()));
     }
 
     fn new_env(&self) -> Context {
@@ -94,8 +93,7 @@ impl Context {
                     );
                 }
                 ast::ModuleItem::Impl(impl_) => {
-                    ctx.impls
-                        .insert(impl_.struct_name.name.value.to_string(), impl_.clone());
+                    ctx.impls.insert(impl_.struct_name.name.value.to_string(), impl_.clone());
                 }
                 _ => {}
             }
@@ -108,127 +106,97 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     let mut result = HashMap::new();
     result.insert(
         "i8".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "i8".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "i8".to_string(),
+        })),
     );
     result.insert(
         "i16".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "i16".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "i16".to_string(),
+        })),
     );
     result.insert(
         "i32".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "i32".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "i32".to_string(),
+        })),
     );
     result.insert(
         "i64".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "i64".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "i64".to_string(),
+        })),
     );
     result.insert(
         "isize".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "isize".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "isize".to_string(),
+        })),
     );
 
     result.insert(
         "u8".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "u8".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "u8".to_string(),
+        })),
     );
     result.insert(
         "u16".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "u16".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "u16".to_string(),
+        })),
     );
     result.insert(
         "u32".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "u32".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "u32".to_string(),
+        })),
     );
     result.insert(
         "u64".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "u64".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "u64".to_string(),
+        })),
     );
     result.insert(
         "usize".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "usize".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "usize".to_string(),
+        })),
     );
 
     result.insert(
         "f32".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "f32".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "f32".to_string(),
+        })),
     );
     result.insert(
         "f64".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "f64".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "f64".to_string(),
+        })),
     );
 
     result.insert(
         "bool".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "bool".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "bool".to_string(),
+        })),
     );
 
     result.insert(
         "!".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "!".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "!".to_string(),
+        })),
     );
     result.insert(
         "unit".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(
-            ast::PrimitiveTypeDeclaration {
-                name: "!".to_string(),
-            },
-        )),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "!".to_string(),
+        })),
     );
 
     return result;
@@ -277,11 +245,7 @@ impl TreeWalkInterpreter {
         return last;
     }
 
-    fn with_statement(
-        self: &Self,
-        ctx: &mut Context,
-        statement: &ast::Statement,
-    ) -> ExpressionResult {
+    fn with_statement(self: &Self, ctx: &mut Context, statement: &ast::Statement) -> ExpressionResult {
         match statement {
             ast::Statement::Return(return_statement) => {
                 let result = match self.with_expression(ctx, &return_statement.source) {
@@ -311,11 +275,7 @@ impl TreeWalkInterpreter {
         }
     }
 
-    fn with_assignment_statement(
-        self: &Self,
-        ctx: &mut Context,
-        statement: &ast::AssignmentStatement,
-    ) -> ExpressionResult {
+    fn with_assignment_statement(self: &Self, ctx: &mut Context, statement: &ast::AssignmentStatement) -> ExpressionResult {
         let result = match self.with_expression(ctx, &statement.expression) {
             ExpressionResult::Value(r) => r,
             ExpressionResult::Return(r) => {
@@ -336,9 +296,7 @@ impl TreeWalkInterpreter {
                 match &mut source {
                     Value::Struct(s) => {
                         let mut struct_ = s.lock().unwrap();
-                        struct_
-                            .fields
-                            .insert(struct_attr.attribute.name.value.clone(), result);
+                        struct_.fields.insert(struct_attr.attribute.name.value.clone(), result);
                     }
                     _ => panic!("set attr on nonstruct, should never happen due to type system"),
                 }
@@ -347,11 +305,7 @@ impl TreeWalkInterpreter {
         return ExpressionResult::Value(Value::Unit);
     }
 
-    fn with_expression(
-        self: &Self,
-        ctx: &mut Context,
-        expression: &ast::Expression,
-    ) -> ExpressionResult {
+    fn with_expression(self: &Self, ctx: &mut Context, expression: &ast::Expression) -> ExpressionResult {
         match &*expression.subexpression {
             ast::Subexpression::LiteralInt(literal_int) => {
                 let value: i64 = literal_int.value.value.parse().unwrap();
@@ -362,18 +316,12 @@ impl TreeWalkInterpreter {
                 return ExpressionResult::Value(Value::Numeric(NumericValue::F64(value)));
             }
             ast::Subexpression::LiteralBool(literal_bool) => {
-                let value: bool = if &literal_bool.value.value == "true" {
-                    true
-                } else {
-                    false
-                };
+                let value: bool = if &literal_bool.value.value == "true" { true } else { false };
                 return ExpressionResult::Value(Value::Bool(value));
             }
             ast::Subexpression::LiteralStruct(literal_struct) => {
                 let declaration = match &ctx.environment[&literal_struct.name.name.value] {
-                    NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(declaration)) => {
-                        declaration.clone()
-                    }
+                    NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(declaration)) => declaration.clone(),
                     _ => panic!("not a struct"),
                 };
 
@@ -416,17 +364,10 @@ impl TreeWalkInterpreter {
                 match &source {
                     Value::Function(Function::User(user_function)) => {
                         let mut fn_ctx = ctx.new_env();
-                        for (i, function_arg) in
-                            user_function.declaration.arguments.iter().enumerate()
-                        {
-                            fn_ctx.set_variable(
-                                function_arg.name.name.value.to_string(),
-                                &argument_values[i].clone(),
-                            );
+                        for (i, function_arg) in user_function.declaration.arguments.iter().enumerate() {
+                            fn_ctx.set_variable(function_arg.name.name.value.to_string(), &argument_values[i].clone());
                         }
-                        return ExpressionResult::Value(
-                            self.with_function(&mut fn_ctx, user_function),
-                        );
+                        return ExpressionResult::Value(self.with_function(&mut fn_ctx, user_function));
                     }
                     Value::Function(Function::Builtin(builtin_function)) => {
                         return ExpressionResult::Value(builtin_function(argument_values));
@@ -473,9 +414,7 @@ impl TreeWalkInterpreter {
                 match &source {
                     Value::Struct(struct_) => {
                         let s = struct_.lock().unwrap();
-                        return ExpressionResult::Value(
-                            s.fields[&struct_getter.attribute.name.value].clone(),
-                        );
+                        return ExpressionResult::Value(s.fields[&struct_getter.attribute.name.value].clone());
                     }
                     _ => {
                         panic!("TypeError: struct getter used with non-struct");
@@ -500,217 +439,137 @@ impl TreeWalkInterpreter {
                 };
                 let result = match (&left, &op.op, &right) {
                     //I
-                    (
-                        Value::Numeric(NumericValue::I8(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::I8(r)),
-                    ) => Value::Numeric(NumericValue::I8(l + r)),
-                    (
-                        Value::Numeric(NumericValue::I8(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::I8(r)),
-                    ) => Value::Numeric(NumericValue::I8(l - r)),
-                    (
-                        Value::Numeric(NumericValue::I8(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::I8(r)),
-                    ) => Value::Numeric(NumericValue::I8(l * r)),
-                    (
-                        Value::Numeric(NumericValue::I8(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::I8(r)),
-                    ) => Value::Numeric(NumericValue::I8(l / r)),
+                    (Value::Numeric(NumericValue::I8(l)), ast::Operator::Plus, Value::Numeric(NumericValue::I8(r))) => {
+                        Value::Numeric(NumericValue::I8(l + r))
+                    }
+                    (Value::Numeric(NumericValue::I8(l)), ast::Operator::Minus, Value::Numeric(NumericValue::I8(r))) => {
+                        Value::Numeric(NumericValue::I8(l - r))
+                    }
+                    (Value::Numeric(NumericValue::I8(l)), ast::Operator::Mul, Value::Numeric(NumericValue::I8(r))) => {
+                        Value::Numeric(NumericValue::I8(l * r))
+                    }
+                    (Value::Numeric(NumericValue::I8(l)), ast::Operator::Div, Value::Numeric(NumericValue::I8(r))) => {
+                        Value::Numeric(NumericValue::I8(l / r))
+                    }
 
-                    (
-                        Value::Numeric(NumericValue::I16(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::I16(r)),
-                    ) => Value::Numeric(NumericValue::I16(l + r)),
-                    (
-                        Value::Numeric(NumericValue::I16(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::I16(r)),
-                    ) => Value::Numeric(NumericValue::I16(l - r)),
-                    (
-                        Value::Numeric(NumericValue::I16(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::I16(r)),
-                    ) => Value::Numeric(NumericValue::I16(l * r)),
-                    (
-                        Value::Numeric(NumericValue::I16(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::I16(r)),
-                    ) => Value::Numeric(NumericValue::I16(l / r)),
+                    (Value::Numeric(NumericValue::I16(l)), ast::Operator::Plus, Value::Numeric(NumericValue::I16(r))) => {
+                        Value::Numeric(NumericValue::I16(l + r))
+                    }
+                    (Value::Numeric(NumericValue::I16(l)), ast::Operator::Minus, Value::Numeric(NumericValue::I16(r))) => {
+                        Value::Numeric(NumericValue::I16(l - r))
+                    }
+                    (Value::Numeric(NumericValue::I16(l)), ast::Operator::Mul, Value::Numeric(NumericValue::I16(r))) => {
+                        Value::Numeric(NumericValue::I16(l * r))
+                    }
+                    (Value::Numeric(NumericValue::I16(l)), ast::Operator::Div, Value::Numeric(NumericValue::I16(r))) => {
+                        Value::Numeric(NumericValue::I16(l / r))
+                    }
 
-                    (
-                        Value::Numeric(NumericValue::I32(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::I32(r)),
-                    ) => Value::Numeric(NumericValue::I32(l + r)),
-                    (
-                        Value::Numeric(NumericValue::I32(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::I32(r)),
-                    ) => Value::Numeric(NumericValue::I32(l - r)),
-                    (
-                        Value::Numeric(NumericValue::I32(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::I32(r)),
-                    ) => Value::Numeric(NumericValue::I32(l * r)),
-                    (
-                        Value::Numeric(NumericValue::I32(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::I32(r)),
-                    ) => Value::Numeric(NumericValue::I32(l / r)),
+                    (Value::Numeric(NumericValue::I32(l)), ast::Operator::Plus, Value::Numeric(NumericValue::I32(r))) => {
+                        Value::Numeric(NumericValue::I32(l + r))
+                    }
+                    (Value::Numeric(NumericValue::I32(l)), ast::Operator::Minus, Value::Numeric(NumericValue::I32(r))) => {
+                        Value::Numeric(NumericValue::I32(l - r))
+                    }
+                    (Value::Numeric(NumericValue::I32(l)), ast::Operator::Mul, Value::Numeric(NumericValue::I32(r))) => {
+                        Value::Numeric(NumericValue::I32(l * r))
+                    }
+                    (Value::Numeric(NumericValue::I32(l)), ast::Operator::Div, Value::Numeric(NumericValue::I32(r))) => {
+                        Value::Numeric(NumericValue::I32(l / r))
+                    }
 
-                    (
-                        Value::Numeric(NumericValue::I64(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::I64(r)),
-                    ) => Value::Numeric(NumericValue::I64(l + r)),
-                    (
-                        Value::Numeric(NumericValue::I64(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::I64(r)),
-                    ) => Value::Numeric(NumericValue::I64(l - r)),
-                    (
-                        Value::Numeric(NumericValue::I64(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::I64(r)),
-                    ) => Value::Numeric(NumericValue::I64(l * r)),
-                    (
-                        Value::Numeric(NumericValue::I64(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::I64(r)),
-                    ) => Value::Numeric(NumericValue::I64(l / r)),
+                    (Value::Numeric(NumericValue::I64(l)), ast::Operator::Plus, Value::Numeric(NumericValue::I64(r))) => {
+                        Value::Numeric(NumericValue::I64(l + r))
+                    }
+                    (Value::Numeric(NumericValue::I64(l)), ast::Operator::Minus, Value::Numeric(NumericValue::I64(r))) => {
+                        Value::Numeric(NumericValue::I64(l - r))
+                    }
+                    (Value::Numeric(NumericValue::I64(l)), ast::Operator::Mul, Value::Numeric(NumericValue::I64(r))) => {
+                        Value::Numeric(NumericValue::I64(l * r))
+                    }
+                    (Value::Numeric(NumericValue::I64(l)), ast::Operator::Div, Value::Numeric(NumericValue::I64(r))) => {
+                        Value::Numeric(NumericValue::I64(l / r))
+                    }
 
                     //U
-                    (
-                        Value::Numeric(NumericValue::U8(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::U8(r)),
-                    ) => Value::Numeric(NumericValue::U8(l + r)),
-                    (
-                        Value::Numeric(NumericValue::U8(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::U8(r)),
-                    ) => Value::Numeric(NumericValue::U8(l - r)),
-                    (
-                        Value::Numeric(NumericValue::U8(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::U8(r)),
-                    ) => Value::Numeric(NumericValue::U8(l * r)),
-                    (
-                        Value::Numeric(NumericValue::U8(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::U8(r)),
-                    ) => Value::Numeric(NumericValue::U8(l / r)),
+                    (Value::Numeric(NumericValue::U8(l)), ast::Operator::Plus, Value::Numeric(NumericValue::U8(r))) => {
+                        Value::Numeric(NumericValue::U8(l + r))
+                    }
+                    (Value::Numeric(NumericValue::U8(l)), ast::Operator::Minus, Value::Numeric(NumericValue::U8(r))) => {
+                        Value::Numeric(NumericValue::U8(l - r))
+                    }
+                    (Value::Numeric(NumericValue::U8(l)), ast::Operator::Mul, Value::Numeric(NumericValue::U8(r))) => {
+                        Value::Numeric(NumericValue::U8(l * r))
+                    }
+                    (Value::Numeric(NumericValue::U8(l)), ast::Operator::Div, Value::Numeric(NumericValue::U8(r))) => {
+                        Value::Numeric(NumericValue::U8(l / r))
+                    }
 
-                    (
-                        Value::Numeric(NumericValue::U16(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::U16(r)),
-                    ) => Value::Numeric(NumericValue::U16(l + r)),
-                    (
-                        Value::Numeric(NumericValue::U16(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::U16(r)),
-                    ) => Value::Numeric(NumericValue::U16(l - r)),
-                    (
-                        Value::Numeric(NumericValue::U16(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::U16(r)),
-                    ) => Value::Numeric(NumericValue::U16(l * r)),
-                    (
-                        Value::Numeric(NumericValue::U16(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::U16(r)),
-                    ) => Value::Numeric(NumericValue::U16(l / r)),
+                    (Value::Numeric(NumericValue::U16(l)), ast::Operator::Plus, Value::Numeric(NumericValue::U16(r))) => {
+                        Value::Numeric(NumericValue::U16(l + r))
+                    }
+                    (Value::Numeric(NumericValue::U16(l)), ast::Operator::Minus, Value::Numeric(NumericValue::U16(r))) => {
+                        Value::Numeric(NumericValue::U16(l - r))
+                    }
+                    (Value::Numeric(NumericValue::U16(l)), ast::Operator::Mul, Value::Numeric(NumericValue::U16(r))) => {
+                        Value::Numeric(NumericValue::U16(l * r))
+                    }
+                    (Value::Numeric(NumericValue::U16(l)), ast::Operator::Div, Value::Numeric(NumericValue::U16(r))) => {
+                        Value::Numeric(NumericValue::U16(l / r))
+                    }
 
-                    (
-                        Value::Numeric(NumericValue::U32(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::U32(r)),
-                    ) => Value::Numeric(NumericValue::U32(l + r)),
-                    (
-                        Value::Numeric(NumericValue::U32(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::U32(r)),
-                    ) => Value::Numeric(NumericValue::U32(l - r)),
-                    (
-                        Value::Numeric(NumericValue::U32(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::U32(r)),
-                    ) => Value::Numeric(NumericValue::U32(l * r)),
-                    (
-                        Value::Numeric(NumericValue::U32(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::U32(r)),
-                    ) => Value::Numeric(NumericValue::U32(l / r)),
+                    (Value::Numeric(NumericValue::U32(l)), ast::Operator::Plus, Value::Numeric(NumericValue::U32(r))) => {
+                        Value::Numeric(NumericValue::U32(l + r))
+                    }
+                    (Value::Numeric(NumericValue::U32(l)), ast::Operator::Minus, Value::Numeric(NumericValue::U32(r))) => {
+                        Value::Numeric(NumericValue::U32(l - r))
+                    }
+                    (Value::Numeric(NumericValue::U32(l)), ast::Operator::Mul, Value::Numeric(NumericValue::U32(r))) => {
+                        Value::Numeric(NumericValue::U32(l * r))
+                    }
+                    (Value::Numeric(NumericValue::U32(l)), ast::Operator::Div, Value::Numeric(NumericValue::U32(r))) => {
+                        Value::Numeric(NumericValue::U32(l / r))
+                    }
 
-                    (
-                        Value::Numeric(NumericValue::U64(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::U64(r)),
-                    ) => Value::Numeric(NumericValue::U64(l + r)),
-                    (
-                        Value::Numeric(NumericValue::U64(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::U64(r)),
-                    ) => Value::Numeric(NumericValue::U64(l - r)),
-                    (
-                        Value::Numeric(NumericValue::U64(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::U64(r)),
-                    ) => Value::Numeric(NumericValue::U64(l * r)),
-                    (
-                        Value::Numeric(NumericValue::U64(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::U64(r)),
-                    ) => Value::Numeric(NumericValue::U64(l / r)),
+                    (Value::Numeric(NumericValue::U64(l)), ast::Operator::Plus, Value::Numeric(NumericValue::U64(r))) => {
+                        Value::Numeric(NumericValue::U64(l + r))
+                    }
+                    (Value::Numeric(NumericValue::U64(l)), ast::Operator::Minus, Value::Numeric(NumericValue::U64(r))) => {
+                        Value::Numeric(NumericValue::U64(l - r))
+                    }
+                    (Value::Numeric(NumericValue::U64(l)), ast::Operator::Mul, Value::Numeric(NumericValue::U64(r))) => {
+                        Value::Numeric(NumericValue::U64(l * r))
+                    }
+                    (Value::Numeric(NumericValue::U64(l)), ast::Operator::Div, Value::Numeric(NumericValue::U64(r))) => {
+                        Value::Numeric(NumericValue::U64(l / r))
+                    }
 
                     //F
-                    (
-                        Value::Numeric(NumericValue::F32(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::F32(r)),
-                    ) => Value::Numeric(NumericValue::F32(l + r)),
-                    (
-                        Value::Numeric(NumericValue::F32(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::F32(r)),
-                    ) => Value::Numeric(NumericValue::F32(l - r)),
-                    (
-                        Value::Numeric(NumericValue::F32(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::F32(r)),
-                    ) => Value::Numeric(NumericValue::F32(l * r)),
-                    (
-                        Value::Numeric(NumericValue::F32(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::F32(r)),
-                    ) => Value::Numeric(NumericValue::F32(l / r)),
+                    (Value::Numeric(NumericValue::F32(l)), ast::Operator::Plus, Value::Numeric(NumericValue::F32(r))) => {
+                        Value::Numeric(NumericValue::F32(l + r))
+                    }
+                    (Value::Numeric(NumericValue::F32(l)), ast::Operator::Minus, Value::Numeric(NumericValue::F32(r))) => {
+                        Value::Numeric(NumericValue::F32(l - r))
+                    }
+                    (Value::Numeric(NumericValue::F32(l)), ast::Operator::Mul, Value::Numeric(NumericValue::F32(r))) => {
+                        Value::Numeric(NumericValue::F32(l * r))
+                    }
+                    (Value::Numeric(NumericValue::F32(l)), ast::Operator::Div, Value::Numeric(NumericValue::F32(r))) => {
+                        Value::Numeric(NumericValue::F32(l / r))
+                    }
 
-                    (
-                        Value::Numeric(NumericValue::F64(l)),
-                        ast::Operator::Plus,
-                        Value::Numeric(NumericValue::F64(r)),
-                    ) => Value::Numeric(NumericValue::F64(l + r)),
-                    (
-                        Value::Numeric(NumericValue::F64(l)),
-                        ast::Operator::Minus,
-                        Value::Numeric(NumericValue::F64(r)),
-                    ) => Value::Numeric(NumericValue::F64(l - r)),
-                    (
-                        Value::Numeric(NumericValue::F64(l)),
-                        ast::Operator::Mul,
-                        Value::Numeric(NumericValue::F64(r)),
-                    ) => Value::Numeric(NumericValue::F64(l * r)),
-                    (
-                        Value::Numeric(NumericValue::F64(l)),
-                        ast::Operator::Div,
-                        Value::Numeric(NumericValue::F64(r)),
-                    ) => Value::Numeric(NumericValue::F64(l / r)),
+                    (Value::Numeric(NumericValue::F64(l)), ast::Operator::Plus, Value::Numeric(NumericValue::F64(r))) => {
+                        Value::Numeric(NumericValue::F64(l + r))
+                    }
+                    (Value::Numeric(NumericValue::F64(l)), ast::Operator::Minus, Value::Numeric(NumericValue::F64(r))) => {
+                        Value::Numeric(NumericValue::F64(l - r))
+                    }
+                    (Value::Numeric(NumericValue::F64(l)), ast::Operator::Mul, Value::Numeric(NumericValue::F64(r))) => {
+                        Value::Numeric(NumericValue::F64(l * r))
+                    }
+                    (Value::Numeric(NumericValue::F64(l)), ast::Operator::Div, Value::Numeric(NumericValue::F64(r))) => {
+                        Value::Numeric(NumericValue::F64(l / r))
+                    }
 
                     //fail
                     _ => panic!(""),

@@ -33,6 +33,8 @@ This language is under active development, progress will be marked here as the l
   - [x] Declaration
   - [x] Use
 - [ ] Traits
+  - [x] Basic
+  - [ ] Default Functions
 - [ ] Generics
   - [ ] Basic
   - [ ] Higher kinded types

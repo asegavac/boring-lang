@@ -18,6 +18,10 @@ pub enum TypingError {
     },
     #[error("unknown field name")]
     UnknownFieldName { identifier: ast::Identifier },
+    #[error("cannot assign to method")]
+    CannotAssignToMethod { identifier: ast::Identifier },
+    #[error("multiple field name matches")]
+    MultipleFieldName { identifier: ast::Identifier },
     #[error("attribute gotten of non-struct")]
     AttributeOfNonstruct { identifier: ast::Identifier },
     #[error("name is not a struct, cannot instaniate")]
@@ -27,6 +31,15 @@ pub enum TypingError {
         struct_name: ast::Identifier,
         struct_definition_name: ast::Identifier,
     },
+    #[error("missing trait function")]
+    MissingTraitFunction {
+        struct_name: ast::Identifier,
+        function_name: ast::Identifier,
+    },
+    #[error("function not in trait")]
+    FunctionNotInTrait { function_name: ast::Identifier },
+    #[error("impl trait must be trait")]
+    ImplTraitMustBeTrait { trait_name: ast::Identifier },
     #[error("function call used with non-function")]
     FunctionCallNotAFunction {
         // TODO: add position

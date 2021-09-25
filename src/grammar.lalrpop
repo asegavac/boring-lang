@@ -25,7 +25,9 @@ match {
     "if",
     "else",
     "=",
+    "for",
     "type",
+    "trait",
     "struct",
     "impl",
     ",",
@@ -208,13 +210,24 @@ pub AliasTypeDeclaration: ast::AliasTypeDeclaration = {
     "type" <i:SpannedIdentifier> "=" <t:TypeUsage> ";" => ast::AliasTypeDeclaration{name: i, replaces: t}
 };
 
+pub TraitItem: ast::TraitItem = {
+    <fd:FunctionDeclaration> ";" => ast::TraitItem::FunctionDeclaration(fd),
+    <f:Function> => ast::TraitItem::Function(f),
+};
+
+pub TraitTypeDeclaration: ast::TraitTypeDeclaration = {
+    "type" <i:SpannedIdentifier> "trait" "{" <ti:TraitItem*> "}" => ast::TraitTypeDeclaration{name: i, functions: ti},
+};
+
 pub TypeDeclaration: ast::TypeDeclaration = {
     <s:StructTypeDeclaration> => ast::TypeDeclaration::Struct(s),
     <a:AliasTypeDeclaration> => ast::TypeDeclaration::Alias(a),
+    <t:TraitTypeDeclaration> => ast::TypeDeclaration::Trait(t),
 };
 
 pub Impl: ast::Impl = {
-    "impl" <i:SpannedIdentifier> "{" <f:Function*> "}" => ast::Impl{struct_name: i, functions: f}
+    "impl" <i:SpannedIdentifier> "{" <f:Function*> "}" => ast::Impl{trait_: None, struct_name: i, functions: f},
+    "impl" <t:SpannedIdentifier> "for" <i:SpannedIdentifier> "{" <f:Function*> "}" => ast::Impl{trait_: Some(t), struct_name: i, functions: f},
 };
 
 pub ModuleItem: ast::ModuleItem = {

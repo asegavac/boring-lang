@@ -6,9 +6,7 @@ pub struct IdGenerator {
 
 impl IdGenerator {
     pub fn new() -> Self {
-        IdGenerator {
-            counter: RefCell::new(0),
-        }
+        IdGenerator { counter: RefCell::new(0) }
     }
 
     pub fn next(&self) -> String {
@@ -76,15 +74,11 @@ pub enum TypeUsage {
 
 impl TypeUsage {
     pub fn new_unknown(id_gen: &IdGenerator) -> TypeUsage {
-        return TypeUsage::Unknown(UnknownTypeUsage {
-            name: id_gen.next(),
-        });
+        return TypeUsage::Unknown(UnknownTypeUsage { name: id_gen.next() });
     }
 
     pub fn new_named(identifier: Identifier) -> TypeUsage {
-        return TypeUsage::Named(NamedTypeUsage {
-            name: identifier.clone(),
-        });
+        return TypeUsage::Named(NamedTypeUsage { name: identifier.clone() });
     }
 
     pub fn new_builtin(name: String) -> TypeUsage {
@@ -100,9 +94,7 @@ impl TypeUsage {
 
     pub fn new_function(arg_count: usize, id_gen: &IdGenerator) -> TypeUsage {
         return TypeUsage::Function(FunctionTypeUsage {
-            arguments: (0..arg_count)
-                .map(|_| TypeUsage::new_unknown(&id_gen))
-                .collect(),
+            arguments: (0..arg_count).map(|_| TypeUsage::new_unknown(&id_gen)).collect(),
             return_type: Box::new(TypeUsage::new_unknown(&id_gen)),
         });
     }
@@ -252,6 +244,25 @@ pub struct FunctionDeclaration {
     pub return_type: TypeUsage,
 }
 
+impl FunctionDeclaration {
+    pub fn to_type(&self) -> TypeUsage {
+        TypeUsage::Function(FunctionTypeUsage {
+            arguments: self.arguments.iter().map(|arg| arg.type_.clone()).collect(),
+            return_type: Box::new(self.return_type.clone()),
+        })
+    }
+
+    pub fn to_method_type(&self) -> TypeUsage {
+        TypeUsage::Function(FunctionTypeUsage {
+            arguments: self.arguments[1..self.arguments.len()]
+                .iter()
+                .map(|arg| arg.type_.clone())
+                .collect(),
+            return_type: Box::new(self.return_type.clone()),
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Function {
     pub declaration: FunctionDeclaration,
@@ -276,6 +287,18 @@ pub struct StructTypeDeclaration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TraitItem {
+    FunctionDeclaration(FunctionDeclaration),
+    Function(Function),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TraitTypeDeclaration {
+    pub name: Identifier,
+    pub functions: Vec<TraitItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AliasTypeDeclaration {
     pub name: Identifier,
     pub replaces: TypeUsage,
@@ -286,10 +309,12 @@ pub enum TypeDeclaration {
     Struct(StructTypeDeclaration),
     Primitive(PrimitiveTypeDeclaration),
     Alias(AliasTypeDeclaration),
+    Trait(TraitTypeDeclaration),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Impl {
+    pub trait_: Option<Identifier>,
     pub struct_name: Identifier,
     pub functions: Vec<Function>,
 }

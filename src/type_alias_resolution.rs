@@ -33,11 +33,7 @@ fn process_type(ctx: &Context, type_: &ast::TypeUsage) -> ast::TypeUsage {
         }
         ast::TypeUsage::Function(function) => {
             return ast::TypeUsage::Function(ast::FunctionTypeUsage {
-                arguments: function
-                    .arguments
-                    .iter()
-                    .map(|a| process_type(ctx, &a.clone()))
-                    .collect(),
+                arguments: function.arguments.iter().map(|a| process_type(ctx, &a.clone())).collect(),
                 return_type: Box::new(process_type(ctx, &function.return_type.clone())),
             });
         }
@@ -51,9 +47,7 @@ pub struct TypeAliasResolver {}
 
 impl TypeAliasResolver {
     pub fn with_module(self: &Self, module: &ast::Module) -> ast::Module {
-        let mut ctx = Context {
-            type_aliases: vec![],
-        };
+        let mut ctx = Context { type_aliases: vec![] };
         for item in module.items.iter() {
             match item {
                 ast::ModuleItem::TypeDeclaration(ast::TypeDeclaration::Alias(alias)) => {
@@ -68,17 +62,11 @@ impl TypeAliasResolver {
                 .items
                 .iter()
                 .map(|item| match item {
-                    ast::ModuleItem::Function(function) => {
-                        ast::ModuleItem::Function(self.with_function(&ctx, function))
-                    }
+                    ast::ModuleItem::Function(function) => ast::ModuleItem::Function(self.with_function(&ctx, function)),
                     ast::ModuleItem::TypeDeclaration(type_declaration) => {
-                        ast::ModuleItem::TypeDeclaration(
-                            self.with_type_declaration(&ctx, type_declaration),
-                        )
+                        ast::ModuleItem::TypeDeclaration(self.with_type_declaration(&ctx, type_declaration))
                     }
-                    ast::ModuleItem::Impl(impl_) => {
-                        ast::ModuleItem::Impl(self.with_impl(&ctx, impl_))
-                    }
+                    ast::ModuleItem::Impl(impl_) => ast::ModuleItem::Impl(self.with_impl(&ctx, impl_)),
                 })
                 .collect(),
         };
@@ -86,28 +74,27 @@ impl TypeAliasResolver {
 
     fn with_function(self: &Self, ctx: &Context, function: &ast::Function) -> ast::Function {
         return ast::Function {
-            declaration: ast::FunctionDeclaration {
-                name: function.declaration.name.clone(),
-                arguments: function
-                    .declaration
-                    .arguments
-                    .iter()
-                    .map(|arg| ast::VariableDeclaration {
-                        name: arg.name.clone(),
-                        type_: process_type(ctx, &arg.type_),
-                    })
-                    .collect(),
-                return_type: process_type(ctx, &function.declaration.return_type),
-            },
+            declaration: self.with_function_declaration(ctx, &function.declaration),
             block: self.with_block(ctx, &function.block),
         };
     }
 
-    fn with_type_declaration(
-        self: &Self,
-        ctx: &Context,
-        type_declaration: &ast::TypeDeclaration,
-    ) -> ast::TypeDeclaration {
+    fn with_function_declaration(self: &Self, ctx: &Context, declaration: &ast::FunctionDeclaration) -> ast::FunctionDeclaration {
+        return ast::FunctionDeclaration {
+            name: declaration.name.clone(),
+            arguments: declaration
+                .arguments
+                .iter()
+                .map(|arg| ast::VariableDeclaration {
+                    name: arg.name.clone(),
+                    type_: process_type(ctx, &arg.type_),
+                })
+                .collect(),
+            return_type: process_type(ctx, &declaration.return_type),
+        };
+    }
+
+    fn with_type_declaration(self: &Self, ctx: &Context, type_declaration: &ast::TypeDeclaration) -> ast::TypeDeclaration {
         match type_declaration {
             ast::TypeDeclaration::Struct(struct_) => {
                 return ast::TypeDeclaration::Struct(self.with_struct_declaration(ctx, struct_));
@@ -118,14 +105,13 @@ impl TypeAliasResolver {
             ast::TypeDeclaration::Alias(alias) => {
                 return ast::TypeDeclaration::Alias(alias.clone());
             }
+            ast::TypeDeclaration::Trait(trait_) => {
+                return ast::TypeDeclaration::Trait(self.with_trait(ctx, trait_));
+            }
         }
     }
 
-    fn with_struct_declaration(
-        self: &Self,
-        ctx: &Context,
-        struct_: &ast::StructTypeDeclaration,
-    ) -> ast::StructTypeDeclaration {
+    fn with_struct_declaration(self: &Self, ctx: &Context, struct_: &ast::StructTypeDeclaration) -> ast::StructTypeDeclaration {
         return ast::StructTypeDeclaration {
             name: struct_.name.clone(),
             fields: struct_
@@ -134,6 +120,34 @@ impl TypeAliasResolver {
                 .map(|field| ast::StructField {
                     name: field.name.clone(),
                     type_: process_type(ctx, &field.type_),
+                })
+                .collect(),
+        };
+    }
+
+    fn with_trait(self: &Self, ctx: &Context, trait_: &ast::TraitTypeDeclaration) -> ast::TraitTypeDeclaration {
+        let mut trait_ctx = ctx.clone();
+        trait_ctx.type_aliases.push(ast::AliasTypeDeclaration {
+            name: ast::Identifier {
+                name: ast::Spanned {
+                    span: ast::Span { left: 0, right: 0 }, //todo: figure out a sane value for these
+                    value: "Self".to_string(),
+                },
+            },
+            replaces: ast::TypeUsage::Named(ast::NamedTypeUsage { name: trait_.name.clone() }),
+        });
+        return ast::TraitTypeDeclaration {
+            name: trait_.name.clone(),
+            functions: trait_
+                .functions
+                .iter()
+                .map(|f| match f {
+                    ast::TraitItem::Function(function) => {
+                        ast::TraitItem::Function(self.with_function(&trait_ctx, function))
+                    },
+                    ast::TraitItem::FunctionDeclaration(function_declaration) => {
+                        ast::TraitItem::FunctionDeclaration(self.with_function_declaration(&trait_ctx, function_declaration))
+                    }
                 })
                 .collect(),
         };
@@ -153,22 +167,15 @@ impl TypeAliasResolver {
             }),
         });
         return ast::Impl {
+            trait_: impl_.trait_.clone(),
             struct_name: impl_.struct_name.clone(),
-            functions: impl_
-                .functions
-                .iter()
-                .map(|f| self.with_function(&impl_ctx, f))
-                .collect(),
+            functions: impl_.functions.iter().map(|f| self.with_function(&impl_ctx, f)).collect(),
         };
     }
 
     fn with_block(self: &Self, ctx: &Context, block: &ast::Block) -> ast::Block {
         return ast::Block {
-            statements: block
-                .statements
-                .iter()
-                .map(|s| self.with_statement(ctx, s))
-                .collect(),
+            statements: block.statements.iter().map(|s| self.with_statement(ctx, s)).collect(),
             type_: process_type(ctx, &block.type_),
         };
     }
@@ -182,9 +189,7 @@ impl TypeAliasResolver {
                 return ast::Statement::Let(self.with_let_statement(ctx, let_statement));
             }
             ast::Statement::Assignment(assignment_statement) => {
-                return ast::Statement::Assignment(
-                    self.with_assignment_statement(ctx, assignment_statement),
-                );
+                return ast::Statement::Assignment(self.with_assignment_statement(ctx, assignment_statement));
             }
             ast::Statement::Expression(expression) => {
                 return ast::Statement::Expression(self.with_expression(ctx, expression));
@@ -192,21 +197,13 @@ impl TypeAliasResolver {
         }
     }
 
-    fn with_return_statement(
-        self: &Self,
-        ctx: &Context,
-        statement: &ast::ReturnStatement,
-    ) -> ast::ReturnStatement {
+    fn with_return_statement(self: &Self, ctx: &Context, statement: &ast::ReturnStatement) -> ast::ReturnStatement {
         return ast::ReturnStatement {
             source: self.with_expression(ctx, &statement.source),
         };
     }
 
-    fn with_let_statement(
-        self: &Self,
-        ctx: &Context,
-        statement: &ast::LetStatement,
-    ) -> ast::LetStatement {
+    fn with_let_statement(self: &Self, ctx: &Context, statement: &ast::LetStatement) -> ast::LetStatement {
         return ast::LetStatement {
             variable_name: statement.variable_name.clone(),
             expression: self.with_expression(ctx, &statement.expression),
@@ -214,56 +211,38 @@ impl TypeAliasResolver {
         };
     }
 
-    fn with_assignment_statement(
-        self: &Self,
-        ctx: &Context,
-        statement: &ast::AssignmentStatement,
-    ) -> ast::AssignmentStatement {
+    fn with_assignment_statement(self: &Self, ctx: &Context, statement: &ast::AssignmentStatement) -> ast::AssignmentStatement {
         return ast::AssignmentStatement {
             source: match &statement.source {
-                ast::AssignmentTarget::Variable(variable) => {
-                    ast::AssignmentTarget::Variable(ast::VariableUsage {
-                        name: variable.name.clone(),
-                        type_: process_type(ctx, &variable.type_),
-                    })
-                }
-                ast::AssignmentTarget::StructAttr(struct_attr) => {
-                    ast::AssignmentTarget::StructAttr(ast::StructGetter {
-                        source: self.with_expression(ctx, &struct_attr.source),
-                        attribute: struct_attr.attribute.clone(),
-                        type_: process_type(ctx, &struct_attr.type_),
-                    })
-                }
+                ast::AssignmentTarget::Variable(variable) => ast::AssignmentTarget::Variable(ast::VariableUsage {
+                    name: variable.name.clone(),
+                    type_: process_type(ctx, &variable.type_),
+                }),
+                ast::AssignmentTarget::StructAttr(struct_attr) => ast::AssignmentTarget::StructAttr(ast::StructGetter {
+                    source: self.with_expression(ctx, &struct_attr.source),
+                    attribute: struct_attr.attribute.clone(),
+                    type_: process_type(ctx, &struct_attr.type_),
+                }),
             },
             expression: self.with_expression(ctx, &statement.expression),
         };
     }
 
-    fn with_expression(
-        self: &Self,
-        ctx: &Context,
-        expression: &ast::Expression,
-    ) -> ast::Expression {
+    fn with_expression(self: &Self, ctx: &Context, expression: &ast::Expression) -> ast::Expression {
         return ast::Expression {
             subexpression: Box::new(match &*expression.subexpression {
-                ast::Subexpression::LiteralInt(literal_int) => {
-                    ast::Subexpression::LiteralInt(ast::LiteralInt {
-                        value: literal_int.value.clone(),
-                        type_: process_type(ctx, &literal_int.type_),
-                    })
-                }
-                ast::Subexpression::LiteralFloat(literal_float) => {
-                    ast::Subexpression::LiteralFloat(ast::LiteralFloat {
-                        value: literal_float.value.clone(),
-                        type_: process_type(ctx, &literal_float.type_),
-                    })
-                }
-                ast::Subexpression::LiteralBool(literal_bool) => {
-                    ast::Subexpression::LiteralBool(ast::LiteralBool {
-                        value: literal_bool.value.clone(),
-                        type_: process_type(ctx, &literal_bool.type_),
-                    })
-                }
+                ast::Subexpression::LiteralInt(literal_int) => ast::Subexpression::LiteralInt(ast::LiteralInt {
+                    value: literal_int.value.clone(),
+                    type_: process_type(ctx, &literal_int.type_),
+                }),
+                ast::Subexpression::LiteralFloat(literal_float) => ast::Subexpression::LiteralFloat(ast::LiteralFloat {
+                    value: literal_float.value.clone(),
+                    type_: process_type(ctx, &literal_float.type_),
+                }),
+                ast::Subexpression::LiteralBool(literal_bool) => ast::Subexpression::LiteralBool(ast::LiteralBool {
+                    value: literal_bool.value.clone(),
+                    type_: process_type(ctx, &literal_bool.type_),
+                }),
                 ast::Subexpression::LiteralStruct(literal_struct) => {
                     let result = resolve_type(
                         ctx,
@@ -285,44 +264,30 @@ impl TypeAliasResolver {
                         type_: process_type(ctx, &literal_struct.type_),
                     })
                 }
-                ast::Subexpression::FunctionCall(function_call) => {
-                    ast::Subexpression::FunctionCall(ast::FunctionCall {
-                        source: self.with_expression(ctx, &function_call.source),
-                        arguments: function_call
-                            .arguments
-                            .iter()
-                            .map(|arg| self.with_expression(ctx, arg))
-                            .collect(),
-                        type_: process_type(ctx, &function_call.type_),
-                    })
-                }
-                ast::Subexpression::VariableUsage(variable_usage) => {
-                    ast::Subexpression::VariableUsage(ast::VariableUsage {
-                        name: variable_usage.name.clone(),
-                        type_: process_type(ctx, &variable_usage.type_),
-                    })
-                }
-                ast::Subexpression::If(if_expression) => {
-                    ast::Subexpression::If(ast::IfExpression {
-                        condition: self.with_expression(ctx, &if_expression.condition),
-                        block: self.with_block(ctx, &if_expression.block),
-                        else_: match &if_expression.else_ {
-                            Some(else_) => Some(self.with_block(ctx, else_)),
-                            None => None,
-                        },
-                        type_: process_type(ctx, &if_expression.type_),
-                    })
-                }
-                ast::Subexpression::StructGetter(struct_getter) => {
-                    ast::Subexpression::StructGetter(ast::StructGetter {
-                        source: self.with_expression(ctx, &struct_getter.source),
-                        attribute: struct_getter.attribute.clone(),
-                        type_: process_type(ctx, &struct_getter.type_),
-                    })
-                }
-                ast::Subexpression::Block(block) => {
-                    ast::Subexpression::Block(self.with_block(ctx, &block))
-                }
+                ast::Subexpression::FunctionCall(function_call) => ast::Subexpression::FunctionCall(ast::FunctionCall {
+                    source: self.with_expression(ctx, &function_call.source),
+                    arguments: function_call.arguments.iter().map(|arg| self.with_expression(ctx, arg)).collect(),
+                    type_: process_type(ctx, &function_call.type_),
+                }),
+                ast::Subexpression::VariableUsage(variable_usage) => ast::Subexpression::VariableUsage(ast::VariableUsage {
+                    name: variable_usage.name.clone(),
+                    type_: process_type(ctx, &variable_usage.type_),
+                }),
+                ast::Subexpression::If(if_expression) => ast::Subexpression::If(ast::IfExpression {
+                    condition: self.with_expression(ctx, &if_expression.condition),
+                    block: self.with_block(ctx, &if_expression.block),
+                    else_: match &if_expression.else_ {
+                        Some(else_) => Some(self.with_block(ctx, else_)),
+                        None => None,
+                    },
+                    type_: process_type(ctx, &if_expression.type_),
+                }),
+                ast::Subexpression::StructGetter(struct_getter) => ast::Subexpression::StructGetter(ast::StructGetter {
+                    source: self.with_expression(ctx, &struct_getter.source),
+                    attribute: struct_getter.attribute.clone(),
+                    type_: process_type(ctx, &struct_getter.type_),
+                }),
+                ast::Subexpression::Block(block) => ast::Subexpression::Block(self.with_block(ctx, &block)),
                 ast::Subexpression::Op(op) => ast::Subexpression::Op(ast::Operation {
                     left: self.with_expression(ctx, &op.left),
                     op: op.op.clone(),
