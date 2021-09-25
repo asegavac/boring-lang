@@ -28,11 +28,6 @@ fn unit_function() {
   let a: i64 = 4;
 }
 
-fn main(): i64 {
-    add(4, subtract(5, 2))
-}
-
-
 fn returns_user(): User {
     return User{
         id: 4,
@@ -74,11 +69,9 @@ fn if_expression(): i64 {
 }
 
 fn main(): i64 {
-  if (false) {
-    add(4, 4)
-  } else {
-    61
-  }
+    let a = User{id: 4};
+    let b = a.instance_method();
+    b
 }
 
 type TestTrait trait {
