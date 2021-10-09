@@ -82,6 +82,7 @@ impl TypeAliasResolver {
     fn with_function_declaration(self: &Self, ctx: &Context, declaration: &ast::FunctionDeclaration) -> ast::FunctionDeclaration {
         return ast::FunctionDeclaration {
             name: declaration.name.clone(),
+            generic: declaration.generic.clone(),
             arguments: declaration
                 .arguments
                 .iter()
@@ -113,6 +114,7 @@ impl TypeAliasResolver {
 
     fn with_struct_declaration(self: &Self, ctx: &Context, struct_: &ast::StructTypeDeclaration) -> ast::StructTypeDeclaration {
         return ast::StructTypeDeclaration {
+            generic: struct_.generic.clone(),
             name: struct_.name.clone(),
             fields: struct_
                 .fields
@@ -134,9 +136,13 @@ impl TypeAliasResolver {
                     value: "Self".to_string(),
                 },
             },
-            replaces: ast::TypeUsage::Named(ast::NamedTypeUsage { name: trait_.name.clone() }),
+            replaces: ast::TypeUsage::Named(ast::NamedTypeUsage {
+                type_parameters: ast::GenericUsage::Unknown,
+                name: trait_.name.clone()
+            }),
         });
         return ast::TraitTypeDeclaration {
+            generic: trait_.generic.clone(),
             name: trait_.name.clone(),
             functions: trait_
                 .functions
@@ -163,12 +169,16 @@ impl TypeAliasResolver {
                 },
             },
             replaces: ast::TypeUsage::Named(ast::NamedTypeUsage {
+                type_parameters: ast::GenericUsage::Unknown,
                 name: impl_.struct_name.clone(),
             }),
         });
         return ast::Impl {
+            generic: impl_.generic.clone(),
+            trait_type_parameters: impl_.trait_type_parameters.clone(),
             trait_: impl_.trait_.clone(),
             struct_name: impl_.struct_name.clone(),
+            struct_type_parameters: impl_.struct_type_parameters.clone(),
             functions: impl_.functions.iter().map(|f| self.with_function(&impl_ctx, f)).collect(),
         };
     }
@@ -215,10 +225,12 @@ impl TypeAliasResolver {
         return ast::AssignmentStatement {
             source: match &statement.source {
                 ast::AssignmentTarget::Variable(variable) => ast::AssignmentTarget::Variable(ast::VariableUsage {
+                    type_parameters: variable.type_parameters.clone(),
                     name: variable.name.clone(),
                     type_: process_type(ctx, &variable.type_),
                 }),
                 ast::AssignmentTarget::StructAttr(struct_attr) => ast::AssignmentTarget::StructAttr(ast::StructGetter {
+                    type_parameters: struct_attr.type_parameters.clone(),
                     source: self.with_expression(ctx, &struct_attr.source),
                     attribute: struct_attr.attribute.clone(),
                     type_: process_type(ctx, &struct_attr.type_),
@@ -247,6 +259,7 @@ impl TypeAliasResolver {
                     let result = resolve_type(
                         ctx,
                         &ast::NamedTypeUsage {
+                            type_parameters: literal_struct.type_parameters.clone(),
                             name: literal_struct.name.clone(),
                         },
                     );
@@ -255,6 +268,7 @@ impl TypeAliasResolver {
                         _ => panic!("LiteralStruct resolved to non-named-type"),
                     };
                     ast::Subexpression::LiteralStruct(ast::LiteralStruct {
+                        type_parameters: literal_struct.type_parameters.clone(),
                         name: new_name.clone(),
                         fields: literal_struct
                             .fields
@@ -270,6 +284,7 @@ impl TypeAliasResolver {
                     type_: process_type(ctx, &function_call.type_),
                 }),
                 ast::Subexpression::VariableUsage(variable_usage) => ast::Subexpression::VariableUsage(ast::VariableUsage {
+                    type_parameters: variable_usage.type_parameters.clone(),
                     name: variable_usage.name.clone(),
                     type_: process_type(ctx, &variable_usage.type_),
                 }),
@@ -283,6 +298,7 @@ impl TypeAliasResolver {
                     type_: process_type(ctx, &if_expression.type_),
                 }),
                 ast::Subexpression::StructGetter(struct_getter) => ast::Subexpression::StructGetter(ast::StructGetter {
+                    type_parameters: struct_getter.type_parameters.clone(),
                     source: self.with_expression(ctx, &struct_getter.source),
                     attribute: struct_getter.attribute.clone(),
                     type_: process_type(ctx, &struct_getter.type_),

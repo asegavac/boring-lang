@@ -53,6 +53,45 @@ This language is under active development, progress will be marked here as the l
 
 This project is actively looking for contributors, so if you're interested in programming language design or have experience working with LLVM, don't hesitate to contact.
 
+## Philosophy
+
+Boring-lang is meant to be an industrial usage programming language optimized for quickly writing maintainable code above all else. To accomplish this, boring-lang has a simple rule:
+
+1. Referential transparency is preferred, but anywhere it is broken must me encoded into the type system.
+2. You cannot fundamentally change the behavior of a function (effects) without changing the type signature.
+
+We accomplish this in a few ways:
+
+### Sandboxing
+
+Unlike many other programming languages, boringlang's `main` function takes in two arguments: a vector of command line arguments, and a reference to the OS which is the program's only link to the outside world. To open a file in boringlang, you cannot just call `open` anywhere, you *must* call `os.fs().open("path")`. All `os.whatever()` methods return an interface for interacting with that part of the OS, such as `fs`, `net`, `datetime`, and `syscall`. Because this is the only way to interact with the world outside of the program, this means that any IO the program does can be trivially mocked for testing, and that all operations the program can perform are sandboxed. If a function doesn't require a reference to the `FS` trait, you can be sure it doesn't interact with the file system.
+
+### "Effects" System
+
+Boring-lang doesn't have a formal effects system, but rather the "effects" are simply traits that get tacked onto a functions type. For an example, let's use a GUI program where clicking on a button can have an effect, in this case writing to a file.
+
+```rust
+type ClickHandler trait {
+    async fn on_click(self): ClickError;
+}
+
+type MyButton[T: FS] struct { // T is a generic type implementing fs
+    fs: T,
+}
+
+impl MyButton[T] {
+    fn new(fs: T): MyButton {
+        return MyButton{fs: fs};
+    }
+}
+
+impl ClickHandler for MyButton[T] {
+    async fn on_click(self): ClickError {
+        let file = await self.fs.open("my_file")?;
+        await file.write("foo")?;
+    }
+}
+```
 
 ## Http Server Example
 
@@ -62,7 +101,7 @@ import logging as logging;
 import json as json;
 
 type ExampleResponse struct {
-  id: I32,
+  id: i32,
   name: Str,
   email: Str,
 }
@@ -77,7 +116,7 @@ async fn handle(req: http.Request, resp: mut http.Response): {
   await resp.write(json.encode[ExampleResponse](response_data));
 }
 
-async fn main(args: Vec[Str], os: OS): I32 {
+async fn main(args: Vec[Str], os: OS): i32 {
     let log = logging.new_logger(os.console.stdout());
     let router = http.Router("").add_route("/myroute", handle);
     let http_server = http.Server(os.net(), "localhost", 8080, router);
@@ -161,10 +200,6 @@ pub fn cancel_middleware[Ctx: Cancel](handler: HTTPRequest[Ctx]): HTTPRequest {
 ```
 
 for the above examples, you would pass a context type that implements all three traits.
-
-## Sandboxing
-
-Unlike many other programming languages, boringlang's `main` function takes in two arguments: a vector of command line arguments, and a reference to the OS which is the program's only link to the outside world. To open a file in boringlang, you cannot just call `open` anywhere, you *must* call `os.fs().open("path")`. All `os.whatever()` methods return an interface for interacting with that part of the OS, such as `fs`, `net`, `datetime`, and `syscall`. Because this is the only way to interact with the world outside of the program, this means that any IO the program does can be trivially mocked for testing, and that all operations the program can perform are sandboxed. If a function doesn't require a reference to the `FS` trait, you can be sure it doesn't interact with the file system.
 
 ## Import System
 

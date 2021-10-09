@@ -12,6 +12,9 @@ match {
     "}",
     "(",
     ")",
+    "[",
+    "]",
+    "",
     ".",
     "+",
     "-",
@@ -66,15 +69,34 @@ pub Identifier: String = {
     <i:r"[A-Za-z_][A-Za-z0-9_]*"> => i.to_string()
 };
 
+pub GenericUsage: ast::GenericUsage = {
+    "[" <tp:Comma<TypeUsage>> "]" => ast::GenericUsage::new(&tp),
+};
+
 pub LiteralStructField: (ast::Identifier, ast::Expression) = {
     <field:SpannedIdentifier> ":" <expr:Expression> => (field, expr)
 };
 
 pub LiteralStruct: ast::LiteralStruct = {
-    <i:SpannedIdentifier> "{" <field_list:Comma<LiteralStructField>> "}" => ast::LiteralStruct{
-        name: i.clone(),
-        fields: field_list,
-        type_: ast::TypeUsage::new_named(i.clone()),
+    <i:SpannedIdentifier> <gu:GenericUsage?> "{" <field_list:Comma<LiteralStructField>> "}" => {
+        match gu {
+            Some(tp) => {
+                ast::LiteralStruct{
+                    type_parameters: tp.clone(),
+                    name: i.clone(),
+                    fields: field_list,
+                    type_: ast::TypeUsage::new_named(&i, &tp),
+                }
+            },
+            None => {
+                ast::LiteralStruct{
+                    type_parameters: ast::GenericUsage::Unknown,
+                    name: i.clone(),
+                    fields: field_list,
+                    type_: ast::TypeUsage::new_named(&i, &ast::GenericUsage::Unknown),
+                }
+            }
+        }
     }
 };
 
@@ -87,11 +109,17 @@ pub FunctionCall: ast::FunctionCall = {
 };
 
 pub StructGetter: ast::StructGetter = {
-    <source:Term> "." <field:SpannedIdentifier> => ast::StructGetter{source: source, attribute: field, type_: ast::TypeUsage::new_unknown(&id_generator)}
+    <source:Term> "." <field:SpannedIdentifier> <gu:GenericUsage?> => match gu {
+        Some(tp) => ast::StructGetter{type_parameters: tp, source: source, attribute: field, type_: ast::TypeUsage::new_unknown(&id_generator)},
+        None => ast::StructGetter{type_parameters: ast::GenericUsage::Unknown, source: source, attribute: field, type_: ast::TypeUsage::new_unknown(&id_generator)},
+    }
 };
 
 pub VariableUsage: ast::VariableUsage = {
-    <identifier:SpannedIdentifier> => ast::VariableUsage{name: identifier, type_: ast::TypeUsage::new_unknown(&id_generator)}
+    <identifier:SpannedIdentifier> <gu:GenericUsage?> => match gu {
+        Some(tp) => ast::VariableUsage{type_parameters: tp, name: identifier, type_: ast::TypeUsage::new_unknown(&id_generator)},
+        None => ast::VariableUsage{type_parameters: ast::GenericUsage::Unknown, name: identifier, type_: ast::TypeUsage::new_unknown(&id_generator)},
+    }
 };
 
 pub IfExpression: ast::IfExpression = {
@@ -180,7 +208,10 @@ pub Block: ast::Block = {
 };
 
 pub TypeUsage: ast::TypeUsage = {
-    <n:SpannedIdentifier> => ast::TypeUsage::Named(ast::NamedTypeUsage{name: n}),
+    <n:SpannedIdentifier> <gu:GenericUsage?> => match gu {
+        Some(tp) => ast::TypeUsage::Named(ast::NamedTypeUsage{type_parameters: tp, name: n}),
+        None => ast::TypeUsage::Named(ast::NamedTypeUsage{type_parameters: ast::GenericUsage::Unknown, name: n}),
+    },
     "fn" "(" <args:Comma<TypeUsage>> ")" => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: Box::new(ast::new_unit())}),
     "fn" "(" <args:Comma<TypeUsage>> ")" ":" <rt:TypeUsage> => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: Box::new(rt)}),
 };
@@ -189,9 +220,20 @@ pub VariableDeclaration: ast::VariableDeclaration = {
     <i:SpannedIdentifier> ":" <t:TypeUsage> => ast::VariableDeclaration{name: i, type_: t},
 };
 
+pub GenericParameter: ast::GenericParameter = {
+    <i:SpannedIdentifier> => ast::GenericParameter{name: i, bounds: vec!()},
+    <i:SpannedIdentifier> ":" <bounds:PlusSeparated<SpannedIdentifier>> => ast::GenericParameter{name: i, bounds: bounds},
+};
+
+pub Generic: ast::Generic = {
+    "[" <p:Comma<GenericParameter>> "]" => ast::Generic{parameters: p},
+};
+
 pub FunctionDeclaration: ast::FunctionDeclaration = {
-    "fn" <n:SpannedIdentifier> "(" <args:Comma<VariableDeclaration>> ")" => ast::FunctionDeclaration{name: n, arguments: args, return_type: ast::new_unit()},
-    "fn" <n:SpannedIdentifier> "(" <args:Comma<VariableDeclaration>> ")" ":" <rt:TypeUsage> => ast::FunctionDeclaration{name: n, arguments: args, return_type: rt},
+    "fn" <n:SpannedIdentifier> <g:Generic> "(" <args:Comma<VariableDeclaration>> ")" => ast::FunctionDeclaration{name: n, generic: g, arguments: args, return_type: ast::new_unit()},
+    "fn" <n:SpannedIdentifier> <g:Generic> "(" <args:Comma<VariableDeclaration>> ")" ":" <rt:TypeUsage> => ast::FunctionDeclaration{name: n, generic: g, arguments: args, return_type: rt},
+    "fn" <n:SpannedIdentifier> "(" <args:Comma<VariableDeclaration>> ")" => ast::FunctionDeclaration{name: n, generic: ast::Generic{parameters: vec!()}, arguments: args, return_type: ast::new_unit()},
+    "fn" <n:SpannedIdentifier> "(" <args:Comma<VariableDeclaration>> ")" ":" <rt:TypeUsage> => ast::FunctionDeclaration{name: n, generic: ast::Generic{parameters: vec!()}, arguments: args, return_type: rt},
 };
 
 pub Function: ast::Function = {
@@ -203,7 +245,10 @@ pub StructField: ast::StructField = {
 };
 
 pub StructTypeDeclaration: ast::StructTypeDeclaration = {
-    "type" <i:SpannedIdentifier> "struct" "{" <f:Comma<StructField>> "}" => ast::StructTypeDeclaration{name: i, fields: f}
+    "type" <i:SpannedIdentifier>  <g:Generic?> "struct" "{" <f:Comma<StructField>> "}" => match g {
+        Some(generic) => ast::StructTypeDeclaration{name: i, generic: generic, fields: f},
+        None => ast::StructTypeDeclaration{name: i, generic: ast::Generic{parameters: vec!()}, fields: f},
+    }
 };
 
 pub AliasTypeDeclaration: ast::AliasTypeDeclaration = {
@@ -216,7 +261,8 @@ pub TraitItem: ast::TraitItem = {
 };
 
 pub TraitTypeDeclaration: ast::TraitTypeDeclaration = {
-    "type" <i:SpannedIdentifier> "trait" "{" <ti:TraitItem*> "}" => ast::TraitTypeDeclaration{name: i, functions: ti},
+    "type" <i:SpannedIdentifier> <g:Generic> "trait" "{" <ti:TraitItem*> "}" => ast::TraitTypeDeclaration{name: i, generic: g, functions: ti},
+    "type" <i:SpannedIdentifier> "trait" "{" <ti:TraitItem*> "}" => ast::TraitTypeDeclaration{name: i, generic: ast::Generic{parameters: vec!()}, functions: ti},
 };
 
 pub TypeDeclaration: ast::TypeDeclaration = {
@@ -226,8 +272,32 @@ pub TypeDeclaration: ast::TypeDeclaration = {
 };
 
 pub Impl: ast::Impl = {
-    "impl" <i:SpannedIdentifier> "{" <f:Function*> "}" => ast::Impl{trait_: None, struct_name: i, functions: f},
-    "impl" <t:SpannedIdentifier> "for" <i:SpannedIdentifier> "{" <f:Function*> "}" => ast::Impl{trait_: Some(t), struct_name: i, functions: f},
+    "impl" <g:Generic?> <i:SpannedIdentifier> <sgu:GenericUsage?> "{" <f:Function*> "}" => {
+        let generic = match g {
+            Some(g) => g,
+            None => ast::Generic{parameters: vec!()},
+        };
+        let struct_type_params = match sgu {
+            Some(stp) => stp,
+            None => ast::GenericUsage::new(&vec!()),
+        };
+        ast::Impl{generic: generic, trait_: None, trait_type_parameters: None, struct_name: i, struct_type_parameters: struct_type_params, functions: f}
+    },
+    "impl" <g:Generic?> <t:SpannedIdentifier> <tgu:GenericUsage?> "for" <i:SpannedIdentifier> <sgu:GenericUsage?> "{" <f:Function*> "}" => {
+        let generic = match g {
+            Some(g) => g,
+            None => ast::Generic{parameters: vec!()},
+        };
+        let struct_type_params = match sgu {
+            Some(stp) => stp,
+            None => ast::GenericUsage::new(&vec!()),
+        };
+        let trait_type_params = match tgu {
+            Some(ttp) => ttp,
+            None => ast::GenericUsage::new(&vec!()),
+        };
+        ast::Impl{generic: generic, trait_: Some(t), trait_type_parameters: Some(trait_type_params), struct_name: i, struct_type_parameters: struct_type_params, functions: f}
+    }
 };
 
 pub ModuleItem: ast::ModuleItem = {
@@ -241,9 +311,21 @@ pub Module: ast::Module = {
 };
 
 // From https://lalrpop.github.io/lalrpop/tutorial/006_macros.html
-// Comma seperated list of T with optional trailing comma
+// Comma separated list of T with optional trailing comma
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+// PlusSeparated separated list of T with optional trailing comma
+PlusSeparated<T>: Vec<T> = {
+    <v:(<T> "+")*> <e:T?> => match e {
         None => v,
         Some(e) => {
             let mut v = v;

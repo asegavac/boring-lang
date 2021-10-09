@@ -17,6 +17,7 @@ impl IdGenerator {
 
 pub fn new_unit() -> TypeUsage {
     TypeUsage::Named(NamedTypeUsage {
+        type_parameters: GenericUsage::Known(GenericInstantiation{parameters: vec!()}),
         name: Identifier {
             name: Spanned {
                 span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
@@ -28,6 +29,7 @@ pub fn new_unit() -> TypeUsage {
 
 pub fn new_never() -> TypeUsage {
     TypeUsage::Named(NamedTypeUsage {
+        type_parameters: GenericUsage::Known(GenericInstantiation{parameters: vec!()}),
         name: Identifier {
             name: Spanned {
                 span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
@@ -57,6 +59,7 @@ pub struct FunctionTypeUsage {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NamedTypeUsage {
+    pub type_parameters: GenericUsage,
     pub name: Identifier,
 }
 
@@ -77,12 +80,13 @@ impl TypeUsage {
         return TypeUsage::Unknown(UnknownTypeUsage { name: id_gen.next() });
     }
 
-    pub fn new_named(identifier: Identifier) -> TypeUsage {
-        return TypeUsage::Named(NamedTypeUsage { name: identifier.clone() });
+    pub fn new_named(identifier: &Identifier, generic_usage: &GenericUsage) -> TypeUsage {
+        return TypeUsage::Named(NamedTypeUsage { type_parameters: generic_usage.clone(), name: identifier.clone() });
     }
 
     pub fn new_builtin(name: String) -> TypeUsage {
         TypeUsage::Named(NamedTypeUsage {
+            type_parameters: GenericUsage::Known(GenericInstantiation{parameters: vec!()}),
             name: Identifier {
                 name: Spanned {
                     span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
@@ -99,6 +103,40 @@ impl TypeUsage {
         });
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenericParameter {
+    pub name: Identifier,
+    pub bounds: Vec<Identifier>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Generic {
+    pub parameters: Vec<GenericParameter>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenericInstantiation {
+    pub parameters: Vec<TypeUsage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenericUsage {
+    Known(GenericInstantiation),
+    Unknown,
+}
+
+impl GenericUsage {
+    pub fn new(type_parameters: &[TypeUsage]) -> Self {
+        GenericUsage::Known(GenericInstantiation{
+            parameters: type_parameters.iter().map(|tp| {
+                tp.clone()
+            }).collect(),
+        })
+    }
+}
+
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Operator {
@@ -128,6 +166,7 @@ pub struct LiteralBool {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralStruct {
+    pub type_parameters: GenericUsage,
     pub name: Identifier,
     pub fields: Vec<(Identifier, Expression)>,
     pub type_: TypeUsage,
@@ -147,6 +186,7 @@ pub struct FunctionCall {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructGetter {
+    pub type_parameters: GenericUsage,
     pub source: Expression,
     pub attribute: Identifier,
     pub type_: TypeUsage,
@@ -161,6 +201,7 @@ pub struct Operation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariableUsage {
+    pub type_parameters: GenericUsage,
     pub name: Identifier,
     pub type_: TypeUsage,
 }
@@ -239,6 +280,7 @@ pub struct VariableDeclaration {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionDeclaration {
+    pub generic: Generic,
     pub name: Identifier,
     pub arguments: Vec<VariableDeclaration>,
     pub return_type: TypeUsage,
@@ -282,6 +324,7 @@ pub struct StructField {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructTypeDeclaration {
+    pub generic: Generic,
     pub name: Identifier,
     pub fields: Vec<StructField>,
 }
@@ -294,6 +337,7 @@ pub enum TraitItem {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitTypeDeclaration {
+    pub generic: Generic,
     pub name: Identifier,
     pub functions: Vec<TraitItem>,
 }
@@ -314,8 +358,11 @@ pub enum TypeDeclaration {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Impl {
+    pub generic: Generic,
+    pub trait_type_parameters: Option<GenericUsage>,
     pub trait_: Option<Identifier>,
     pub struct_name: Identifier,
+    pub struct_type_parameters: GenericUsage,
     pub functions: Vec<Function>,
 }
 

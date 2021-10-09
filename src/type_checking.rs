@@ -579,6 +579,7 @@ impl TypeChecker {
         return Ok((
             ast::Function {
                 declaration: ast::FunctionDeclaration {
+                    generic: declaration.generic.clone(),
                     name: declaration.name.clone(),
                     arguments: declaration.arguments.iter().map(|arg| arg.clone()).collect(),
                     return_type: declaration.return_type.clone(),
@@ -636,6 +637,7 @@ impl TypeChecker {
         }
         Ok((
             ast::TraitTypeDeclaration {
+                generic: trait_.generic.clone(),
                 name: trait_.name.clone(),
                 functions: result_functions,
             },
@@ -653,6 +655,7 @@ impl TypeChecker {
             });
         }
         return Ok(ast::StructTypeDeclaration {
+            generic: struct_.generic.clone(),
             name: struct_.name.clone(),
             fields: fields,
         });
@@ -665,7 +668,7 @@ impl TypeChecker {
         impl_: &ast::Impl,
     ) -> Result<(ast::Impl, SubstitutionMap)> {
         let mut substitutions = incoming_substitutions.clone();
-        type_exists(ctx, &ast::TypeUsage::new_named(impl_.struct_name.clone()))?;
+        type_exists(ctx, &ast::TypeUsage::new_named(&impl_.struct_name.clone(), &ast::GenericUsage::Unknown))?;
         let mut functions = vec![];
         for function in impl_.functions.iter() {
             let (result, function_subs) = self.with_function(&ctx, &substitutions, function)?;
@@ -740,8 +743,11 @@ impl TypeChecker {
         }
         return Ok((
             ast::Impl {
+                generic: impl_.generic.clone(),
+                trait_type_parameters: impl_.trait_type_parameters.clone(),
                 trait_: impl_.trait_.clone(),
                 struct_name: impl_.struct_name.clone(),
+                struct_type_parameters: impl_.struct_type_parameters.clone(),
                 functions: functions,
             },
             substitutions,
@@ -888,6 +894,7 @@ impl TypeChecker {
                 ast::AssignmentTarget::Variable(variable) => {
                     substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &variable.type_, &expr.type_)?)?;
                     ast::AssignmentTarget::Variable(ast::VariableUsage {
+                        type_parameters: variable.type_parameters.clone(),
                         name: variable.name.clone(),
                         type_: apply_substitution(ctx, &substitution, &variable.type_)?,
                     })
@@ -913,6 +920,7 @@ impl TypeChecker {
                         &unify(ctx, &struct_attr.type_, &expr.type_)?,
                     )?;
                     ast::AssignmentTarget::StructAttr(ast::StructGetter {
+                        type_parameters: struct_attr.type_parameters.clone(),
                         source: source,
                         attribute: struct_attr.attribute.clone(),
                         type_: apply_substitution(ctx, &substitution, &struct_attr.type_)?,
@@ -1091,6 +1099,7 @@ impl TypeChecker {
         }
         Ok((
             ast::LiteralStruct {
+                type_parameters: literal_struct.type_parameters.clone(),
                 name: literal_struct.name.clone(),
                 fields: fields,
                 type_: apply_substitution(ctx, &substitution, &literal_struct.type_)?,
@@ -1164,6 +1173,7 @@ impl TypeChecker {
         }
         Ok((
             ast::VariableUsage {
+                type_parameters: variable_usage.type_parameters.clone(),
                 name: variable_usage.name.clone(),
                 type_: apply_substitution(ctx, &substitution, &variable_usage.type_)?,
             },
@@ -1276,6 +1286,7 @@ impl TypeChecker {
 
         Ok((
             ast::StructGetter {
+                type_parameters: struct_getter.type_parameters.clone(),
                 source: source,
                 attribute: struct_getter.attribute.clone(),
                 type_: apply_substitution(ctx, &substitution, &struct_getter.type_)?,
