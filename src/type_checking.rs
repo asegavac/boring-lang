@@ -6,16 +6,72 @@ pub type SubstitutionMap = HashMap<String, ast::TypeUsage>;
 
 pub type Result<T, E = errors::TypingError> = std::result::Result<T, E>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnvImpl {
+    trait_: Option<String>,
+    functions: HashMap<String, ast::TypeUsage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypeType {
+    Scalar,
+    Trait,
+    Struct,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnvType {
+    is_a: TypeType,
+    fields: HashMap<String, ast::TypeUsage>,
+    impls: Vec<EnvImpl>,
+}
+
+impl EnvType {
+    fn from_struct(struct_: &ast::StructTypeDeclaration) -> EnvType {
+        return EnvType {
+            is_a: TypeType::Struct,
+            fields: struct_
+                .fields
+                .iter()
+                .map(|field| (field.name.name.value.to_string(), field.type_.clone()))
+                .collect(),
+            impls: vec![],
+        };
+    }
+
+    fn from_trait(trait_: &ast::TraitTypeDeclaration) -> EnvType {
+        let mut functions = HashMap::new();
+        for func in trait_.functions.iter() {
+            match func {
+                ast::TraitItem::FunctionDeclaration(fd) => {
+                    functions.insert(fd.name.name.value.to_string(), fd.to_type());
+                }
+                ast::TraitItem::Function(f) => {
+                    functions.insert(f.declaration.name.name.value.to_string(), f.declaration.to_type());
+                }
+            }
+        }
+        let impl_ = EnvImpl {
+            trait_: None,
+            functions: functions,
+        };
+        return EnvType {
+            is_a: TypeType::Trait,
+            fields: HashMap::new(),
+            impls: vec![impl_],
+        };
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NamedEntity {
-    TypeDeclaration(ast::TypeDeclaration),
+    NamedType(EnvType),
     Variable(ast::TypeUsage),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Context {
     pub current_function_return: Option<ast::TypeUsage>,
-    pub impls: Vec<ast::Impl>,
     pub environment: HashMap<String, NamedEntity>,
 }
 
@@ -23,99 +79,127 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     let mut result = HashMap::new();
     result.insert(
         "i8".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "i8".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "i16".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "i16".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "i32".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "i32".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "i64".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "i64".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "isize".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "isize".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
 
     result.insert(
         "u8".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "u8".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "u16".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "u16".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "u32".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "u32".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "u64".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "u64".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "usize".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "usize".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
 
     result.insert(
         "f32".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "f32".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "f64".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "f64".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
 
     result.insert(
         "bool".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "bool".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
-
     result.insert(
         "!".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "!".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
     result.insert(
         "unit".to_string(),
-        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
-            name: "unit".to_string(),
-        })),
+        NamedEntity::NamedType(EnvType {
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
     );
-
     return result;
 }
 
@@ -124,167 +208,67 @@ enum StructAttr {
     Method(ast::TypeUsage),
 }
 
-fn get_struct_attr(ctx: &Context, struct_declaration: &ast::StructTypeDeclaration, attribute: &ast::Identifier) -> Result<StructAttr> {
-    for field in struct_declaration.fields.iter() {
-        if field.name.name.value == attribute.name.value {
-            return Ok(StructAttr::Field(field.type_.clone()));
-        }
-    }
-
-    let mut result = Vec::new();
-    for impl_ in ctx.impls.iter() {
-        if &struct_declaration.name.name.value != &impl_.struct_name.name.value {
-            continue;
-        }
-        for method in impl_.functions.iter() {
-            if method.declaration.name.name.value == attribute.name.value {
-                let mut function_type = method.declaration.to_type();
-
-                // if the name of the type of the first argument == the class, remove the first arg
-                if method.declaration.arguments.len() > 0 {
-                    match &method.declaration.arguments[0].type_ {
-                        ast::TypeUsage::Named(named) => {
-                            if named.name.name.value == struct_declaration.name.name.value {
-                                function_type = method.declaration.to_method_type();
-                            }
-                        }
-                        _ => {}
-                    };
-                }
-                result.push(function_type);
-            }
-        }
-    }
-    // TODO: default trait impls
-    if result.len() == 0 {
-        return Err(errors::TypingError::UnknownFieldName {
-            identifier: attribute.clone(),
-        });
-    }
-    if result.len() > 1 {
-        return Err(errors::TypingError::MultipleFieldName {
-            identifier: attribute.clone(),
-        });
-    }
-    return Ok(StructAttr::Method(result[0].clone()));
-}
-
-fn get_trait_attr(ctx: &Context, trait_declaration: &ast::TraitTypeDeclaration, attribute: &ast::Identifier) -> Result<StructAttr> {
-    let mut result = Vec::new();
-    for trait_item in trait_declaration.functions.iter() {
-        let declaration = match trait_item {
-            ast::TraitItem::Function(function) => &function.declaration,
-            ast::TraitItem::FunctionDeclaration(declaration) => declaration,
-        };
-        if declaration.name.name.value == attribute.name.value {
-            let mut function_type = declaration.to_type();
-            println!("foo: {:?}", declaration);
-            // if the name of the type of the first argument == the class, remove the first arg
-            if declaration.arguments.len() > 0 {
-                match &declaration.arguments[0].type_ {
+fn apply_self(type_name: &str, type_: &ast::TypeUsage) -> ast::TypeUsage {
+    match type_ {
+        ast::TypeUsage::Function(func) => {
+            if func.arguments.len() > 0 {
+                match &func.arguments[0] {
                     ast::TypeUsage::Named(named) => {
-                        if named.name.name.value == trait_declaration.name.name.value {
-                            function_type = declaration.to_method_type();
+                        if type_name == named.name.name.value {
+                            return ast::TypeUsage::Function(ast::FunctionTypeUsage {
+                                arguments: func.arguments[1..func.arguments.len()].iter().map(|arg| arg.clone()).collect(),
+                                return_type: func.return_type.clone(),
+                            });
                         }
                     }
                     _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
+    return type_.clone();
+}
+
+fn get_attr(ctx: &Context, get_from: &NamedEntity, attribute: &ast::Identifier) -> Result<StructAttr> {
+    match get_from {
+        NamedEntity::NamedType(env_type) => {
+            if env_type.fields.contains_key(&attribute.name.value) {
+                return Ok(StructAttr::Field(env_type.fields[&attribute.name.value].clone()));
+            }
+            let mut result = Vec::new();
+            for impl_ in env_type.impls.iter() {
+                if impl_.functions.contains_key(&attribute.name.value) {
+                    result.push(impl_.functions[&attribute.name.value].clone())
+                }
+            }
+            if result.len() == 0 {
+                return Err(errors::TypingError::UnknownFieldName {
+                    identifier: attribute.clone(),
+                });
+            }
+            if result.len() > 1 {
+                return Err(errors::TypingError::MultipleFieldName {
+                    identifier: attribute.clone(),
+                });
+            }
+            return Ok(StructAttr::Method(result[0].clone()));
+        }
+        NamedEntity::Variable(type_) => match type_ {
+            ast::TypeUsage::Named(named) => {
+                let attr = get_attr(ctx, &ctx.environment[&named.name.name.value], attribute)?;
+                let method = match attr {
+                    StructAttr::Field(field) => return Ok(StructAttr::Field(field)),
+                    StructAttr::Method(method) => method,
                 };
+                return Ok(StructAttr::Method(apply_self(&named.name.name.value, &method)));
             }
-            result.push(function_type);
-        }
-    }
-    if result.len() == 0 {
-        return Err(errors::TypingError::UnknownFieldName {
-            identifier: attribute.clone(),
-        });
-    }
-    if result.len() > 1 {
-        return Err(errors::TypingError::MultipleFieldName {
-            identifier: attribute.clone(),
-        });
-    }
-    return Ok(StructAttr::Method(result[0].clone()));
-}
-
-fn get_attr(ctx: &Context, source_type: &ast::TypeUsage, attribute: &ast::Identifier) -> Result<StructAttr> {
-    match source_type {
-        ast::TypeUsage::Named(named) => {
-            match &ctx.environment[&named.name.name.value] {
-                NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(type_declaration)) => {
-                    return get_struct_attr(ctx, type_declaration, attribute);
-                }
-                NamedEntity::TypeDeclaration(ast::TypeDeclaration::Trait(type_declaration)) => {
-                    return get_trait_attr(ctx, type_declaration, attribute);
-                }
-                _ => {
-                    return Err(errors::TypingError::AttributeOfNonstruct {
-                        identifier: attribute.clone(),
-                    });
-                    // TODO: support builtins - float, int, etc.
-                }
-            }
-        }
-        ast::TypeUsage::Function(_) => {
-            return Err(errors::TypingError::NotAStructLiteral {
-                identifier: attribute.clone(),
-            });
-        }
-        _ => {
-            panic!("tried to get attr of unknown");
-        }
-    };
-}
-
-fn compare_struct_trait(
-    struct_: &ast::TypeUsage,
-    trait_: &ast::TypeUsage,
-    struct_name: &ast::Identifier,
-    trait_name: &ast::Identifier,
-) -> Result<()> {
-    match struct_ {
-        ast::TypeUsage::Named(named) => match trait_ {
-            ast::TypeUsage::Named(trait_named) => {
-                if named.name.name.value == trait_named.name.name.value
-                    || (named.name.name.value == struct_name.name.value && trait_named.name.name.value == trait_name.name.value)
-                {
-                    return Ok(());
-                }
-                return Err(errors::TypingError::TypeMismatch {
-                    type_one: struct_.clone(),
-                    type_two: trait_.clone(),
+            _ => {
+                return Err(errors::TypingError::AttributeOfNonstruct {
+                    identifier: attribute.clone(),
                 });
             }
-            ast::TypeUsage::Function(_) => {
-                return Err(errors::TypingError::TypeMismatch {
-                    type_one: struct_.clone(),
-                    type_two: trait_.clone(),
-                });
-            }
-            _ => panic!("Unknown in function definition"),
         },
-        ast::TypeUsage::Function(function) => match trait_ {
-            ast::TypeUsage::Named(_) => {
-                return Err(errors::TypingError::TypeMismatch {
-                    type_one: struct_.clone(),
-                    type_two: trait_.clone(),
-                });
-            }
-            ast::TypeUsage::Function(trait_function) => {
-                if function.arguments.len() != trait_function.arguments.len() {
-                    return Err(errors::TypingError::TypeMismatch {
-                        type_one: struct_.clone(),
-                        type_two: trait_.clone(),
-                    });
-                }
-                for (i, _) in function.arguments.iter().enumerate() {
-                    compare_struct_trait(&function.arguments[i], &trait_function.arguments[i], struct_name, trait_name)?;
-                }
-                compare_struct_trait(&function.return_type, &trait_function.return_type, struct_name, trait_name)?;
-                return Ok(());
-            }
-            _ => panic!("Unknown in function definition"),
-        },
-        _ => panic!("Unknown in function definition"),
     }
 }
 
@@ -300,6 +284,59 @@ impl Context {
         ctx.current_function_return = Some(function.clone());
         return ctx;
     }
+
+    fn add_impl(&self, impl_: &ast::Impl, traits: &HashMap<String, ast::TraitTypeDeclaration>) -> Result<Context> {
+        let mut functions = HashMap::new();
+        for func in impl_.functions.iter() {
+            functions.insert(func.declaration.name.name.value.to_string(), func.declaration.to_type());
+        }
+        // fill out defaults
+        match &impl_.trait_ {
+            Some(trait_name) => {
+                if !traits.contains_key(&trait_name.name.value) {
+                    return Err(errors::TypingError::TypeDoesNotExist {
+                        identifier: trait_name.clone(),
+                    });
+                }
+                for func in traits[&trait_name.name.value].functions.iter() {
+                    match func {
+                        ast::TraitItem::Function(default_function) => {
+                            if !functions.contains_key(&default_function.declaration.name.name.value) {
+                                functions.insert(
+                                    default_function.declaration.name.name.value.to_string(),
+                                    default_function.declaration.to_type(),
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            None => {}
+        }
+        let mut result = self.clone();
+        let mut env_named = result.environment[&impl_.struct_name.name.value].clone();
+        match &mut env_named {
+            NamedEntity::NamedType(env_type) => {
+                env_type.impls.push(EnvImpl {
+                    trait_: match &impl_.trait_ {
+                        Some(trait_) => Some(trait_.name.value.to_string()),
+                        None => None,
+                    },
+                    functions: functions,
+                });
+                result
+                    .environment
+                    .insert(impl_.struct_name.name.value.to_string(), NamedEntity::NamedType(env_type.clone()));
+            }
+            NamedEntity::Variable(_) => {
+                return Err(errors::TypingError::TypeDoesNotExist {
+                    identifier: impl_.struct_name.clone(),
+                });
+            }
+        }
+        return Ok(result);
+    }
 }
 
 fn type_exists(ctx: &Context, type_: &ast::TypeUsage) -> Result<()> {
@@ -311,7 +348,7 @@ fn type_exists(ctx: &Context, type_: &ast::TypeUsage) -> Result<()> {
                 });
             }
             match ctx.environment[&named.name.name.value] {
-                NamedEntity::TypeDeclaration(_) => {
+                NamedEntity::NamedType(_) => {
                     // is a type
                 }
                 _ => {
@@ -464,28 +501,24 @@ impl TypeChecker {
     pub fn with_module(self: &Self, module: &ast::Module) -> Result<(ast::Module, SubstitutionMap)> {
         let mut ctx = Context {
             environment: create_builtins(),
-            impls: Vec::new(),
             current_function_return: None,
         };
+
+        let mut traits = HashMap::new();
 
         for item in module.items.iter() {
             match item {
                 ast::ModuleItem::TypeDeclaration(ast::TypeDeclaration::Struct(struct_)) => {
                     ctx.environment.insert(
                         struct_.name.name.value.to_string(),
-                        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(struct_.clone())),
-                    );
-                }
-                ast::ModuleItem::TypeDeclaration(ast::TypeDeclaration::Alias(alias)) => {
-                    ctx.environment.insert(
-                        alias.name.name.value.to_string(),
-                        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Alias(alias.clone())),
+                        NamedEntity::NamedType(EnvType::from_struct(&struct_)),
                     );
                 }
                 ast::ModuleItem::TypeDeclaration(ast::TypeDeclaration::Trait(trait_)) => {
+                    traits.insert(trait_.name.name.value.to_string(), trait_.clone());
                     ctx.environment.insert(
                         trait_.name.name.value.to_string(),
-                        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Trait(trait_.clone())),
+                        NamedEntity::NamedType(EnvType::from_trait(&trait_)),
                     );
                 }
                 ast::ModuleItem::Function(function) => {
@@ -498,8 +531,19 @@ impl TypeChecker {
                         NamedEntity::Variable(ast::TypeUsage::Function(function_type)),
                     );
                 }
+                _ => {}
+            }
+        }
+
+        for item in module.items.iter() {
+            match item {
                 ast::ModuleItem::Impl(impl_) => {
-                    ctx.impls.push(impl_.clone());
+                    if !ctx.environment.contains_key(&impl_.struct_name.name.value) {
+                        return Err(errors::TypingError::IdentifierIsNotType {
+                            identifier: impl_.struct_name.clone(),
+                        });
+                    }
+                    ctx = ctx.add_impl(&impl_, &traits)?;
                 }
                 _ => {}
             }
@@ -530,11 +574,7 @@ impl TypeChecker {
         return Ok((result, subst));
     }
 
-    fn with_function_declaration(
-        self: &Self,
-        ctx: &Context,
-        declaration: &ast::FunctionDeclaration,
-    ) -> Result<ast::FunctionDeclaration> {
+    fn with_function_declaration(self: &Self, ctx: &Context, declaration: &ast::FunctionDeclaration) -> Result<ast::FunctionDeclaration> {
         for arg in declaration.arguments.iter() {
             type_exists(ctx, &arg.type_)?;
         }
@@ -621,7 +661,7 @@ impl TypeChecker {
         trait_: &ast::TraitTypeDeclaration,
     ) -> Result<(ast::TraitTypeDeclaration, SubstitutionMap)> {
         let mut substitutions = incoming_substitutions.clone();
-        let mut result_functions = vec!();
+        let mut result_functions = vec![];
         for item in &trait_.functions {
             match item {
                 ast::TraitItem::FunctionDeclaration(declaration) => {
@@ -668,78 +708,15 @@ impl TypeChecker {
         impl_: &ast::Impl,
     ) -> Result<(ast::Impl, SubstitutionMap)> {
         let mut substitutions = incoming_substitutions.clone();
-        type_exists(ctx, &ast::TypeUsage::new_named(&impl_.struct_name.clone(), &ast::GenericUsage::Unknown))?;
+        type_exists(
+            ctx,
+            &ast::TypeUsage::new_named(&impl_.struct_name.clone(), &ast::GenericUsage::Unknown),
+        )?;
         let mut functions = vec![];
         for function in impl_.functions.iter() {
             let (result, function_subs) = self.with_function(&ctx, &substitutions, function)?;
             substitutions = compose_substitutions(ctx, &substitutions, &function_subs)?;
             functions.push(result);
-        }
-        // See if trait actually matches
-        match &impl_.trait_ {
-            Some(trait_) => {
-                // assert trait functions satisfied
-                if !ctx.environment.contains_key(&trait_.name.value) {
-                    return Err(errors::TypingError::TypeDoesNotExist {
-                        identifier: trait_.clone(),
-                    });
-                }
-                let trait_declaration = match &ctx.environment[&trait_.name.value] {
-                    NamedEntity::TypeDeclaration(ast::TypeDeclaration::Trait(declaration)) => declaration,
-                    _ => {
-                        return Err(errors::TypingError::ImplTraitMustBeTrait {
-                            trait_name: trait_.clone(),
-                        });
-                    }
-                };
-                for trait_item in trait_declaration.functions.iter() {
-                    match trait_item {
-                        ast::TraitItem::FunctionDeclaration(declaration) => {
-                            let mut found = false;
-                            for impl_function in impl_.functions.iter() {
-                                if impl_function.declaration.name.name.value == declaration.name.name.value {
-                                    found = true;
-                                    compare_struct_trait(&impl_function.declaration.to_type(), &declaration.to_type(), &impl_.struct_name, &trait_)?;
-                                }
-                            }
-                            if found == false {
-                                return Err(errors::TypingError::MissingTraitFunction {
-                                    struct_name: impl_.struct_name.clone(),
-                                    function_name: declaration.name.clone(),
-                                });
-                            }
-                        }
-                        ast::TraitItem::Function(function) => {
-                            // skip found check because it has a default
-                            for impl_function in impl_.functions.iter() {
-                                if impl_function.declaration.name.name.value == function.declaration.name.name.value {
-                                    compare_struct_trait(&impl_function.declaration.to_type(), &function.declaration.to_type(), &impl_.struct_name, &trait_)?;
-                                }
-                            }
-                        }
-                    }
-                }
-                // assert all functions are in trait
-                for impl_function in impl_.functions.iter() {
-                    let mut found = false;
-                    for trait_item in trait_declaration.functions.iter() {
-                        let declaration = match trait_item {
-                            ast::TraitItem::Function(function) => &function.declaration,
-                            ast::TraitItem::FunctionDeclaration(declaration) => declaration,
-                        };
-                        if impl_function.declaration.name.name.value == declaration.name.name.value {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if found == false {
-                        return Err(errors::TypingError::FunctionNotInTrait {
-                            function_name: impl_function.declaration.name.clone(),
-                        });
-                    }
-                }
-            }
-            None => {}
         }
         return Ok((
             ast::Impl {
@@ -903,7 +880,7 @@ impl TypeChecker {
                     let (source, subst) = self.with_expression(ctx, &substitution, &struct_attr.source)?;
                     let mut subst = subst.clone();
 
-                    let field_type = match get_attr(ctx, &source.type_, &struct_attr.attribute)? {
+                    let field_type = match get_attr(ctx, &NamedEntity::Variable(source.type_.clone()), &struct_attr.attribute)? {
                         StructAttr::Field(type_) => type_,
                         StructAttr::Method(_) => {
                             return Err(errors::TypingError::CannotAssignToMethod {
@@ -1062,40 +1039,47 @@ impl TypeChecker {
         literal_struct: &ast::LiteralStruct,
     ) -> Result<(ast::LiteralStruct, SubstitutionMap)> {
         let mut substitution = substitution.clone();
-        let type_declaration = match &ctx.environment[&literal_struct.name.name.value] {
-            NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(type_declaration)) => type_declaration,
+        let struct_type = match &ctx.environment[&literal_struct.name.name.value] {
+            NamedEntity::NamedType(env_type) => match &env_type.is_a {
+                TypeType::Struct => env_type.clone(),
+                _ => {
+                    return Err(errors::TypingError::NotAStructLiteral {
+                        identifier: literal_struct.name.clone(),
+                    });
+                }
+            },
             _ => {
                 return Err(errors::TypingError::NotAStructLiteral {
                     identifier: literal_struct.name.clone(),
                 });
             }
         };
-        if type_declaration.fields.len() != literal_struct.fields.len() {
+        if struct_type.fields.len() != literal_struct.fields.len() {
             return Err(errors::TypingError::StructLiteralFieldsMismatch {
                 struct_name: literal_struct.name.clone(),
-                struct_definition_name: type_declaration.name.clone(),
             });
         }
         let mut fields = vec![];
-        for type_field in type_declaration.fields.iter() {
+        for (type_field_name, type_field_type) in struct_type.fields.iter() {
             let mut found = false;
             let mut field_expression: Option<ast::Expression> = None;
+            let mut field_name: Option<ast::Identifier> = None;
             for field in literal_struct.fields.iter() {
-                if type_field.name.name.value == field.0.name.value {
+                if type_field_name == &field.0.name.value {
                     found = true;
                     let (result, subst) = self.with_expression(ctx, &substitution, &field.1)?;
                     substitution = compose_substitutions(ctx, &substitution, &subst)?;
-                    substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &type_field.type_, &result.type_)?)?;
+                    substitution = compose_substitutions(ctx, &substitution, &unify(ctx, type_field_type, &result.type_)?)?;
                     field_expression = Some(result);
+                    field_name = Some(field.0.clone());
                 }
             }
             if !found {
                 return Err(errors::TypingError::StructLiteralFieldsMismatch {
                     struct_name: literal_struct.name.clone(),
-                    struct_definition_name: type_field.name.clone(),
                 });
             }
-            fields.push((type_field.name.clone(), field_expression.unwrap()));
+            fields.push((field_name.unwrap(), field_expression.unwrap()));
         }
         Ok((
             ast::LiteralStruct {
@@ -1164,8 +1148,10 @@ impl TypeChecker {
     ) -> Result<(ast::VariableUsage, SubstitutionMap)> {
         let mut substitution = substitution.clone();
         match &ctx.environment[&variable_usage.name.name.value] {
-            NamedEntity::TypeDeclaration(_) => {
-                panic!("Using types not yet supported");
+            NamedEntity::NamedType(_) => {
+                return Err(errors::TypingError::TypeIsNotAnExpression {
+                    type_name: variable_usage.name.clone(),
+                });
             }
             NamedEntity::Variable(variable) => {
                 substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &variable_usage.type_, &variable)?)?;
@@ -1277,7 +1263,7 @@ impl TypeChecker {
         let (source, subst) = self.with_expression(ctx, &substitution, &struct_getter.source)?;
         substitution = compose_substitutions(ctx, &substitution, &subst)?;
 
-        let field_type = match get_attr(ctx, &source.type_, &struct_getter.attribute)? {
+        let field_type = match get_attr(ctx, &NamedEntity::Variable(source.type_.clone()), &struct_getter.attribute)? {
             StructAttr::Field(type_) => type_,
             StructAttr::Method(type_) => type_,
         };
@@ -1295,14 +1281,24 @@ impl TypeChecker {
         ))
     }
 
-    fn with_block_expression(self: &Self, ctx: &Context, substitution: &SubstitutionMap, block: &ast::Block) -> Result<(ast::Block, SubstitutionMap)> {
+    fn with_block_expression(
+        self: &Self,
+        ctx: &Context,
+        substitution: &SubstitutionMap,
+        block: &ast::Block,
+    ) -> Result<(ast::Block, SubstitutionMap)> {
         let mut substitution = substitution.clone();
         let (result, subst) = self.with_block(ctx, &substitution, &block)?;
         substitution = compose_substitutions(ctx, &substitution, &subst)?;
         Ok((result, substitution))
     }
 
-    fn with_op(self: &Self, ctx: &Context, substitution: &SubstitutionMap, op: &ast::Operation) -> Result<(ast::Operation, SubstitutionMap)> {
+    fn with_op(
+        self: &Self,
+        ctx: &Context,
+        substitution: &SubstitutionMap,
+        op: &ast::Operation,
+    ) -> Result<(ast::Operation, SubstitutionMap)> {
         let mut substitution = substitution.clone();
         let (expr_left, subst_left) = self.with_expression(ctx, &substitution, &op.left)?;
         let (expr_right, subst_right) = self.with_expression(ctx, &substitution, &op.right)?;

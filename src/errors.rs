@@ -27,10 +27,7 @@ pub enum TypingError {
     #[error("name is not a struct, cannot instaniate")]
     NotAStructLiteral { identifier: ast::Identifier },
     #[error("struct literal fields mismatch")]
-    StructLiteralFieldsMismatch {
-        struct_name: ast::Identifier,
-        struct_definition_name: ast::Identifier,
-    },
+    StructLiteralFieldsMismatch { struct_name: ast::Identifier },
     #[error("missing trait function")]
     MissingTraitFunction {
         struct_name: ast::Identifier,
@@ -48,6 +45,8 @@ pub enum TypingError {
     IfConditionMustBeBool {
         // TODO: add position
     },
+    #[error("cannot use type as an expression")]
+    TypeIsNotAnExpression { type_name: ast::Identifier },
     #[error("multiple errors")]
     MultipleErrors { errors: Vec<TypingError> },
 }

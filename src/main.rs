@@ -2,6 +2,7 @@
 mod ast;
 mod errors;
 mod interpreter;
+mod trait_checking;
 mod type_alias_resolution;
 mod type_checking;
 #[macro_use]
@@ -42,6 +43,14 @@ fn main() {
     let alias_resolver = type_alias_resolution::TypeAliasResolver {};
     let resolved_ast = alias_resolver.with_module(&module_ast);
     // println!("resolved ast: {:#?}", &resolved_ast);
+    let trait_checker = trait_checking::TraitChecker {};
+    match trait_checker.with_module(&resolved_ast) {
+        Ok(_) => {}
+        Err(err) => {
+            println!("type checking error: {:#?}", &err);
+            return;
+        }
+    }
     let type_checker = type_checking::TypeChecker {};
     let type_checking_result = type_checker.with_module(&resolved_ast);
     match &type_checking_result {

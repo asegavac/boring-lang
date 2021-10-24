@@ -17,7 +17,7 @@ impl IdGenerator {
 
 pub fn new_unit() -> TypeUsage {
     TypeUsage::Named(NamedTypeUsage {
-        type_parameters: GenericUsage::Known(GenericInstantiation{parameters: vec!()}),
+        type_parameters: GenericUsage::Known(GenericInstantiation { parameters: vec![] }),
         name: Identifier {
             name: Spanned {
                 span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
@@ -29,7 +29,7 @@ pub fn new_unit() -> TypeUsage {
 
 pub fn new_never() -> TypeUsage {
     TypeUsage::Named(NamedTypeUsage {
-        type_parameters: GenericUsage::Known(GenericInstantiation{parameters: vec!()}),
+        type_parameters: GenericUsage::Known(GenericInstantiation { parameters: vec![] }),
         name: Identifier {
             name: Spanned {
                 span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
@@ -81,12 +81,15 @@ impl TypeUsage {
     }
 
     pub fn new_named(identifier: &Identifier, generic_usage: &GenericUsage) -> TypeUsage {
-        return TypeUsage::Named(NamedTypeUsage { type_parameters: generic_usage.clone(), name: identifier.clone() });
+        return TypeUsage::Named(NamedTypeUsage {
+            type_parameters: generic_usage.clone(),
+            name: identifier.clone(),
+        });
     }
 
     pub fn new_builtin(name: String) -> TypeUsage {
         TypeUsage::Named(NamedTypeUsage {
-            type_parameters: GenericUsage::Known(GenericInstantiation{parameters: vec!()}),
+            type_parameters: GenericUsage::Known(GenericInstantiation { parameters: vec![] }),
             name: Identifier {
                 name: Spanned {
                     span: Span { left: 0, right: 0 }, //todo: figure out a sane value for these
@@ -128,15 +131,11 @@ pub enum GenericUsage {
 
 impl GenericUsage {
     pub fn new(type_parameters: &[TypeUsage]) -> Self {
-        GenericUsage::Known(GenericInstantiation{
-            parameters: type_parameters.iter().map(|tp| {
-                tp.clone()
-            }).collect(),
+        GenericUsage::Known(GenericInstantiation {
+            parameters: type_parameters.iter().map(|tp| tp.clone()).collect(),
         })
     }
 }
-
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Operator {

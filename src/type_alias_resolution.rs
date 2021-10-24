@@ -138,7 +138,7 @@ impl TypeAliasResolver {
             },
             replaces: ast::TypeUsage::Named(ast::NamedTypeUsage {
                 type_parameters: ast::GenericUsage::Unknown,
-                name: trait_.name.clone()
+                name: trait_.name.clone(),
             }),
         });
         return ast::TraitTypeDeclaration {
@@ -148,9 +148,7 @@ impl TypeAliasResolver {
                 .functions
                 .iter()
                 .map(|f| match f {
-                    ast::TraitItem::Function(function) => {
-                        ast::TraitItem::Function(self.with_function(&trait_ctx, function))
-                    },
+                    ast::TraitItem::Function(function) => ast::TraitItem::Function(self.with_function(&trait_ctx, function)),
                     ast::TraitItem::FunctionDeclaration(function_declaration) => {
                         ast::TraitItem::FunctionDeclaration(self.with_function_declaration(&trait_ctx, function_declaration))
                     }

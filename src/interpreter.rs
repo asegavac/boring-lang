@@ -95,12 +95,10 @@ impl Context {
                 ast::ModuleItem::Function(function) => {
                     ctx.environment.insert(
                         function.declaration.name.name.value.to_string(),
-                        NamedEntity::Variable(Value::Function(
-                            Function{
-                                partial: vec!(),
-                                ref_: FunctionRef::User(function.clone()),
-                            }
-                        )),
+                        NamedEntity::Variable(Value::Function(Function {
+                            partial: vec![],
+                            ref_: FunctionRef::User(function.clone()),
+                        })),
                     );
                 }
                 ast::ModuleItem::Impl(impl_) => {
@@ -225,11 +223,9 @@ impl TreeWalkInterpreter {
         let mut ctx = Context::from_module(module);
 
         let main = match &ctx.environment["main"] {
-            NamedEntity::Variable(Value::Function(func)) => {
-                match &func.ref_ {
-                    FunctionRef::User(ref_) => ref_.clone(),
-                    _ => panic!("main should be a user defined function"),
-                }
+            NamedEntity::Variable(Value::Function(func)) => match &func.ref_ {
+                FunctionRef::User(ref_) => ref_.clone(),
+                _ => panic!("main should be a user defined function"),
             },
             _ => panic!("main should be a user defined function"),
         };
@@ -378,26 +374,35 @@ impl TreeWalkInterpreter {
                     argument_values.push(argument_value);
                 }
                 match &source {
-                    Value::Function(function) => {
-                        match &function.ref_ {
-                            FunctionRef::User(user_function) => {
-                                let mut fn_ctx = ctx.new_env();
-                                let mut i = 0;
-                                for partial_arg in &function.partial {
-                                    fn_ctx.set_variable(user_function.declaration.arguments[i].name.name.value.to_string(), &partial_arg.clone());
-                                    i = i + 1;
-                                }
-                                for argument_value in &argument_values {
-                                    fn_ctx.set_variable(user_function.declaration.arguments[i].name.name.value.to_string(), &argument_value.clone());
-                                }
-                                return ExpressionResult::Value(self.with_function(&mut fn_ctx, user_function));
+                    Value::Function(function) => match &function.ref_ {
+                        FunctionRef::User(user_function) => {
+                            let mut fn_ctx = ctx.new_env();
+                            let mut i = 0;
+                            for partial_arg in &function.partial {
+                                fn_ctx.set_variable(
+                                    user_function.declaration.arguments[i].name.name.value.to_string(),
+                                    &partial_arg.clone(),
+                                );
+                                i = i + 1;
                             }
-                            FunctionRef::Builtin(builtin_function) => {
-                                let all_values = function.partial.iter().map(|val| {val.clone()}).chain(argument_values.into_iter()).collect();
-                                return ExpressionResult::Value(builtin_function(all_values));
+                            for argument_value in &argument_values {
+                                fn_ctx.set_variable(
+                                    user_function.declaration.arguments[i].name.name.value.to_string(),
+                                    &argument_value.clone(),
+                                );
                             }
+                            return ExpressionResult::Value(self.with_function(&mut fn_ctx, user_function));
                         }
-                    }
+                        FunctionRef::Builtin(builtin_function) => {
+                            let all_values = function
+                                .partial
+                                .iter()
+                                .map(|val| val.clone())
+                                .chain(argument_values.into_iter())
+                                .collect();
+                            return ExpressionResult::Value(builtin_function(all_values));
+                        }
+                    },
                     _ => panic!("type error: function call source must be a function"),
                 }
             }
@@ -454,17 +459,17 @@ impl TreeWalkInterpreter {
                                                     match &method.declaration.arguments[0].type_ {
                                                         ast::TypeUsage::Named(arg_named) => {
                                                             if arg_named.name.name.value == s.source.name.name.value {
-                                                                return ExpressionResult::Value(Value::Function(Function{
-                                                                    partial: vec!(source.clone()),
+                                                                return ExpressionResult::Value(Value::Function(Function {
+                                                                    partial: vec![source.clone()],
                                                                     ref_: FunctionRef::User(method.clone()),
                                                                 }));
                                                             }
                                                         }
-                                                        _ => {},
+                                                        _ => {}
                                                     }
                                                 }
-                                                return ExpressionResult::Value(Value::Function(Function{
-                                                    partial: vec!(),
+                                                return ExpressionResult::Value(Value::Function(Function {
+                                                    partial: vec![],
                                                     ref_: FunctionRef::User(method.clone()),
                                                 }));
                                             }
