@@ -166,17 +166,12 @@ impl TypeAliasResolver {
                     value: "Self".to_string(),
                 },
             },
-            replaces: ast::TypeUsage::Named(ast::NamedTypeUsage {
-                type_parameters: ast::GenericUsage::Unknown,
-                name: impl_.struct_name.clone(),
-            }),
+            replaces: ast::TypeUsage::Named(impl_.struct_.clone()),
         });
         return ast::Impl {
             generic: impl_.generic.clone(),
-            trait_type_parameters: impl_.trait_type_parameters.clone(),
             trait_: impl_.trait_.clone(),
-            struct_name: impl_.struct_name.clone(),
-            struct_type_parameters: impl_.struct_type_parameters.clone(),
+            struct_: impl_.struct_.clone(),
             functions: impl_.functions.iter().map(|f| self.with_function(&impl_ctx, f)).collect(),
         };
     }

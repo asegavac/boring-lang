@@ -207,11 +207,15 @@ pub Block: ast::Block = {
     }
 };
 
-pub TypeUsage: ast::TypeUsage = {
+pub NamedTypeUsage: ast::NamedTypeUsage = {
     <n:SpannedIdentifier> <gu:GenericUsage?> => match gu {
-        Some(tp) => ast::TypeUsage::Named(ast::NamedTypeUsage{type_parameters: tp, name: n}),
-        None => ast::TypeUsage::Named(ast::NamedTypeUsage{type_parameters: ast::GenericUsage::Unknown, name: n}),
+        Some(tp) => ast::NamedTypeUsage{type_parameters: tp, name: n},
+        None => ast::NamedTypeUsage{type_parameters: ast::GenericUsage::Unknown, name: n},
     },
+};
+
+pub TypeUsage: ast::TypeUsage = {
+    <n:NamedTypeUsage> => ast::TypeUsage::Named(n),
     "fn" "(" <args:Comma<TypeUsage>> ")" => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: Box::new(ast::new_unit())}),
     "fn" "(" <args:Comma<TypeUsage>> ")" ":" <rt:TypeUsage> => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: Box::new(rt)}),
 };
@@ -272,31 +276,19 @@ pub TypeDeclaration: ast::TypeDeclaration = {
 };
 
 pub Impl: ast::Impl = {
-    "impl" <g:Generic?> <i:SpannedIdentifier> <sgu:GenericUsage?> "{" <f:Function*> "}" => {
+    "impl" <g:Generic?> <s:NamedTypeUsage> "{" <f:Function*> "}" => {
         let generic = match g {
             Some(g) => g,
             None => ast::Generic{parameters: vec!()},
         };
-        let struct_type_params = match sgu {
-            Some(stp) => stp,
-            None => ast::GenericUsage::new(&vec!()),
-        };
-        ast::Impl{generic: generic, trait_: None, trait_type_parameters: None, struct_name: i, struct_type_parameters: struct_type_params, functions: f}
+        ast::Impl{generic: generic, trait_: None, struct_: s, functions: f}
     },
-    "impl" <g:Generic?> <t:SpannedIdentifier> <tgu:GenericUsage?> "for" <i:SpannedIdentifier> <sgu:GenericUsage?> "{" <f:Function*> "}" => {
+    "impl" <g:Generic?> <t:NamedTypeUsage> "for" <s:NamedTypeUsage> "{" <f:Function*> "}" => {
         let generic = match g {
             Some(g) => g,
             None => ast::Generic{parameters: vec!()},
         };
-        let struct_type_params = match sgu {
-            Some(stp) => stp,
-            None => ast::GenericUsage::new(&vec!()),
-        };
-        let trait_type_params = match tgu {
-            Some(ttp) => ttp,
-            None => ast::GenericUsage::new(&vec!()),
-        };
-        ast::Impl{generic: generic, trait_: Some(t), trait_type_parameters: Some(trait_type_params), struct_name: i, struct_type_parameters: struct_type_params, functions: f}
+        ast::Impl{generic: generic, trait_: Some(t), struct_: s, functions: f}
     }
 };
 

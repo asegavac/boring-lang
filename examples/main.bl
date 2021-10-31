@@ -48,6 +48,10 @@ type User struct {
     id: i64,
 }
 
+type Generic[T] struct {
+    value: T,
+}
+
 impl User {
     fn new(id: i64): Self {
         return Self{

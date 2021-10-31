@@ -10,7 +10,7 @@ struct Context {
 }
 
 fn create_builtins() -> HashMap<String, ast::TraitTypeDeclaration> {
-    let mut result = HashMap::<String, ast::TraitTypeDeclaration>::new();
+    let result = HashMap::<String, ast::TraitTypeDeclaration>::new();
     return result;
 }
 
@@ -100,12 +100,12 @@ impl TraitChecker {
         match &impl_.trait_ {
             Some(trait_) => {
                 // assert trait functions satisfied
-                if !ctx.environment_traits.contains_key(&trait_.name.value) {
+                if !ctx.environment_traits.contains_key(&trait_.name.name.value) {
                     return Err(errors::TypingError::TypeDoesNotExist {
-                        identifier: trait_.clone(),
+                        identifier: trait_.name.clone(),
                     });
                 }
-                let trait_declaration = &ctx.environment_traits[&trait_.name.value];
+                let trait_declaration = &ctx.environment_traits[&trait_.name.name.value];
                 for trait_item in trait_declaration.functions.iter() {
                     match trait_item {
                         ast::TraitItem::FunctionDeclaration(declaration) => {
@@ -116,14 +116,14 @@ impl TraitChecker {
                                     compare_struct_trait(
                                         &impl_function.declaration.to_type(),
                                         &declaration.to_type(),
-                                        &impl_.struct_name,
-                                        &trait_,
+                                        &impl_.struct_.name,
+                                        &trait_.name,
                                     )?;
                                 }
                             }
                             if found == false {
                                 return Err(errors::TypingError::MissingTraitFunction {
-                                    struct_name: impl_.struct_name.clone(),
+                                    struct_name: impl_.struct_.name.clone(),
                                     function_name: declaration.name.clone(),
                                 });
                             }
@@ -135,8 +135,8 @@ impl TraitChecker {
                                     compare_struct_trait(
                                         &impl_function.declaration.to_type(),
                                         &function.declaration.to_type(),
-                                        &impl_.struct_name,
-                                        &trait_,
+                                        &impl_.struct_.name,
+                                        &trait_.name,
                                     )?;
                                 }
                             }

@@ -285,6 +285,32 @@ impl Context {
         return ctx;
     }
 
+    fn add_generic(&self, generic: &ast::Generic) -> Result<Context> {
+        let mut ctx = self.clone();
+        for parameter in generic.parameters.iter() {
+            let mut env_type = EnvType{
+                is_a: TypeType::Trait,
+                fields: HashMap::new(),
+                impls: vec!(),
+            };
+            for bound in parameter.bounds.iter() {
+                if !self.environment.contains_key(&bound.name.value) {
+                    return Err(errors::TypingError::TypeDoesNotExist {
+                        identifier: bound.clone(),
+                    });
+                }
+                match &self.environment[&bound.name.value] {
+                    NamedEntity::NamedType(named_type) => {
+                        env_type.impls.push(named_type.impls[0].clone());
+                    },
+                    _ => {}
+                }
+            };
+            ctx.environment.insert(parameter.name.name.value.clone(), NamedEntity::NamedType(env_type));
+        }
+        return Ok(ctx);
+    }
+
     fn add_impl(&self, impl_: &ast::Impl, traits: &HashMap<String, ast::TraitTypeDeclaration>) -> Result<Context> {
         let mut functions = HashMap::new();
         for func in impl_.functions.iter() {
@@ -292,13 +318,13 @@ impl Context {
         }
         // fill out defaults
         match &impl_.trait_ {
-            Some(trait_name) => {
-                if !traits.contains_key(&trait_name.name.value) {
+            Some(trait_) => {
+                if !traits.contains_key(&trait_.name.name.value) {
                     return Err(errors::TypingError::TypeDoesNotExist {
-                        identifier: trait_name.clone(),
+                        identifier: trait_.name.clone(),
                     });
                 }
-                for func in traits[&trait_name.name.value].functions.iter() {
+                for func in traits[&trait_.name.name.value].functions.iter() {
                     match func {
                         ast::TraitItem::Function(default_function) => {
                             if !functions.contains_key(&default_function.declaration.name.name.value) {
@@ -315,23 +341,23 @@ impl Context {
             None => {}
         }
         let mut result = self.clone();
-        let mut env_named = result.environment[&impl_.struct_name.name.value].clone();
+        let mut env_named = result.environment[&impl_.struct_.name.name.value].clone();
         match &mut env_named {
             NamedEntity::NamedType(env_type) => {
                 env_type.impls.push(EnvImpl {
                     trait_: match &impl_.trait_ {
-                        Some(trait_) => Some(trait_.name.value.to_string()),
+                        Some(trait_) => Some(trait_.name.name.value.to_string()),
                         None => None,
                     },
                     functions: functions,
                 });
                 result
                     .environment
-                    .insert(impl_.struct_name.name.value.to_string(), NamedEntity::NamedType(env_type.clone()));
+                    .insert(impl_.struct_.name.name.value.to_string(), NamedEntity::NamedType(env_type.clone()));
             }
             NamedEntity::Variable(_) => {
                 return Err(errors::TypingError::TypeDoesNotExist {
-                    identifier: impl_.struct_name.clone(),
+                    identifier: impl_.struct_.name.clone(),
                 });
             }
         }
@@ -538,9 +564,9 @@ impl TypeChecker {
         for item in module.items.iter() {
             match item {
                 ast::ModuleItem::Impl(impl_) => {
-                    if !ctx.environment.contains_key(&impl_.struct_name.name.value) {
+                    if !ctx.environment.contains_key(&impl_.struct_.name.name.value) {
                         return Err(errors::TypingError::IdentifierIsNotType {
-                            identifier: impl_.struct_name.clone(),
+                            identifier: impl_.struct_.name.clone(),
                         });
                     }
                     ctx = ctx.add_impl(&impl_, &traits)?;
@@ -588,9 +614,10 @@ impl TypeChecker {
         incoming_substitutions: &SubstitutionMap,
         function: &ast::Function,
     ) -> Result<(ast::Function, SubstitutionMap)> {
-        let declaration = self.with_function_declaration(ctx, &function.declaration)?;
+        let gen_ctx = ctx.add_generic(&function.declaration.generic)?;
+        let declaration = self.with_function_declaration(&gen_ctx, &function.declaration)?;
         // add args to env
-        let mut function_ctx = ctx.set_current_function_return(&declaration.return_type.clone());
+        let mut function_ctx = gen_ctx.set_current_function_return(&declaration.return_type.clone());
         for arg in declaration.arguments.iter() {
             function_ctx = function_ctx.add_variable(arg.name.name.value.to_string(), &arg.type_.clone());
         }
@@ -660,16 +687,17 @@ impl TypeChecker {
         incoming_substitutions: &SubstitutionMap,
         trait_: &ast::TraitTypeDeclaration,
     ) -> Result<(ast::TraitTypeDeclaration, SubstitutionMap)> {
+        let gen_ctx = ctx.add_generic(&trait_.generic)?;
         let mut substitutions = incoming_substitutions.clone();
         let mut result_functions = vec![];
         for item in &trait_.functions {
             match item {
                 ast::TraitItem::FunctionDeclaration(declaration) => {
-                    let result_declaration = self.with_function_declaration(ctx, declaration)?;
+                    let result_declaration = self.with_function_declaration(&gen_ctx, declaration)?;
                     result_functions.push(ast::TraitItem::FunctionDeclaration(result_declaration));
                 }
                 ast::TraitItem::Function(function) => {
-                    let (function_result, susbt) = self.with_function(ctx, incoming_substitutions, function)?;
+                    let (function_result, susbt) = self.with_function(&gen_ctx, incoming_substitutions, function)?;
                     substitutions = compose_substitutions(ctx, &substitutions, &susbt)?;
                     result_functions.push(ast::TraitItem::Function(function_result));
                 }
@@ -686,9 +714,10 @@ impl TypeChecker {
     }
 
     fn with_struct_declaration(self: &Self, ctx: &Context, struct_: &ast::StructTypeDeclaration) -> Result<ast::StructTypeDeclaration> {
+        let struct_ctx = ctx.add_generic(&struct_.generic)?;
         let mut fields = vec![];
         for field in struct_.fields.iter() {
-            type_exists(ctx, &field.type_)?;
+            type_exists(&struct_ctx, &field.type_)?;
             fields.push(ast::StructField {
                 name: field.name.clone(),
                 type_: field.type_.clone(),
@@ -707,24 +736,24 @@ impl TypeChecker {
         incoming_substitutions: &SubstitutionMap,
         impl_: &ast::Impl,
     ) -> Result<(ast::Impl, SubstitutionMap)> {
+        let impl_ctx = ctx.add_generic(&impl_.generic)?;
+
         let mut substitutions = incoming_substitutions.clone();
         type_exists(
-            ctx,
-            &ast::TypeUsage::new_named(&impl_.struct_name.clone(), &ast::GenericUsage::Unknown),
+            &impl_ctx,
+            &ast::TypeUsage::new_named(&impl_.struct_.name.clone(), &ast::GenericUsage::Unknown),
         )?;
         let mut functions = vec![];
         for function in impl_.functions.iter() {
-            let (result, function_subs) = self.with_function(&ctx, &substitutions, function)?;
-            substitutions = compose_substitutions(ctx, &substitutions, &function_subs)?;
+            let (result, function_subs) = self.with_function(&impl_ctx, &substitutions, function)?;
+            substitutions = compose_substitutions(&impl_ctx, &substitutions, &function_subs)?;
             functions.push(result);
         }
         return Ok((
             ast::Impl {
                 generic: impl_.generic.clone(),
-                trait_type_parameters: impl_.trait_type_parameters.clone(),
                 trait_: impl_.trait_.clone(),
-                struct_name: impl_.struct_name.clone(),
-                struct_type_parameters: impl_.struct_type_parameters.clone(),
+                struct_: impl_.struct_.clone(),
                 functions: functions,
             },
             substitutions,

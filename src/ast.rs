@@ -358,10 +358,8 @@ pub enum TypeDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Impl {
     pub generic: Generic,
-    pub trait_type_parameters: Option<GenericUsage>,
-    pub trait_: Option<Identifier>,
-    pub struct_name: Identifier,
-    pub struct_type_parameters: GenericUsage,
+    pub struct_: NamedTypeUsage,
+    pub trait_: Option<NamedTypeUsage>,
     pub functions: Vec<Function>,
 }
 

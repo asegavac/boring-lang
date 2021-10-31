@@ -102,7 +102,7 @@ impl Context {
                     );
                 }
                 ast::ModuleItem::Impl(impl_) => {
-                    ctx.impls.insert(impl_.struct_name.name.value.to_string(), impl_.clone());
+                    ctx.impls.insert(impl_.struct_.name.name.value.to_string(), impl_.clone());
                 }
                 _ => {}
             }
@@ -451,7 +451,7 @@ impl TreeWalkInterpreter {
                         for module_item in &ctx.current_module.items {
                             match module_item {
                                 ast::ModuleItem::Impl(impl_) => {
-                                    if impl_.struct_name.name.value == s.source.name.name.value {
+                                    if impl_.struct_.name.name.value == s.source.name.name.value {
                                         for method in &impl_.functions {
                                             if method.declaration.name.name.value == struct_getter.attribute.name.value {
                                                 // if first type matches, partial apply self
