@@ -47,6 +47,14 @@ pub enum TypingError {
     },
     #[error("cannot use type as an expression")]
     TypeIsNotAnExpression { type_name: ast::Identifier },
+    #[error("wrong number of type parameters")]
+    WrongNumberOfTypeParameters {
+        // TODO: add position
+    },
+    #[error("invalid use of alias")]
+    InvalidUseofAlias,
+    #[error("type cannot be used for generic")]
+    InvalidTypeForGeneric,
     #[error("multiple errors")]
     MultipleErrors { errors: Vec<TypingError> },
 }

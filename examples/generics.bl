@@ -1,0 +1,27 @@
+type MyTrait trait {}
+
+type Pair[K, V: MyTrait] struct {
+    k: K,
+    v: V,
+}
+
+type Value struct {
+    value: i64,
+}
+
+impl MyTrait for Value {}
+
+
+impl [K, V: MyTrait] Pair[K, V] {
+    fn get_value[T](self: Self, a: T): V {
+        return self.v;
+    }
+}
+
+fn main(): i64 {
+    let a = Pair{
+        k: 4,
+        v: Value{value: 6},
+    };
+    return a.get_value(999);
+}

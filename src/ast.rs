@@ -1,17 +1,19 @@
 use std::cell::RefCell;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IdGenerator {
+    id_key: String,
     counter: RefCell<i64>,
 }
 
 impl IdGenerator {
-    pub fn new() -> Self {
-        IdGenerator { counter: RefCell::new(0) }
+    pub fn new(key: &str) -> Self {
+        IdGenerator { id_key: key.to_string(), counter: RefCell::new(0) }
     }
 
     pub fn next(&self) -> String {
         *self.counter.borrow_mut() += 1;
-        ("S".to_owned() + &self.counter.borrow().to_string()).to_string()
+        (self.id_key.to_owned() + &self.counter.borrow().to_string()).to_string()
     }
 }
 
@@ -69,10 +71,17 @@ pub struct UnknownTypeUsage {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NamespaceTypeUsage {
+    Type(NamedTypeUsage)
+    // Module
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeUsage {
     Function(FunctionTypeUsage),
     Named(NamedTypeUsage),
     Unknown(UnknownTypeUsage),
+    Namespace(NamespaceTypeUsage)
 }
 
 impl TypeUsage {
@@ -200,8 +209,8 @@ pub struct Operation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariableUsage {
-    pub type_parameters: GenericUsage,
     pub name: Identifier,
+    pub type_parameters: GenericUsage,
     pub type_: TypeUsage,
 }
 

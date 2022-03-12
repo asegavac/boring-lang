@@ -117,8 +117,8 @@ pub StructGetter: ast::StructGetter = {
 
 pub VariableUsage: ast::VariableUsage = {
     <identifier:SpannedIdentifier> <gu:GenericUsage?> => match gu {
-        Some(tp) => ast::VariableUsage{type_parameters: tp, name: identifier, type_: ast::TypeUsage::new_unknown(&id_generator)},
-        None => ast::VariableUsage{type_parameters: ast::GenericUsage::Unknown, name: identifier, type_: ast::TypeUsage::new_unknown(&id_generator)},
+        Some(tp) => ast::VariableUsage{name: identifier, type_parameters: tp.clone(), type_: ast::TypeUsage::new_unknown(&id_generator)},
+        None => ast::VariableUsage{name: identifier, type_parameters: ast::GenericUsage::Unknown, type_: ast::TypeUsage::new_unknown(&id_generator)},
     }
 };
 

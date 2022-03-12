@@ -37,11 +37,18 @@ fn main() {
     let _output = matches.value_of("OUTPUT").unwrap_or(default_output);
 
     let contents = fs::read_to_string(input).expect("input file not found");
-    let unknown_id_gen = ast::IdGenerator::new();
+    let unknown_id_gen = ast::IdGenerator::new("S");
     let module_ast = grammar::ModuleParser::new().parse(&unknown_id_gen, &contents).unwrap(); //TODO: convert to error
                                                                                               // println!("ast: {:#?}", &module_ast);
     let alias_resolver = type_alias_resolution::TypeAliasResolver {};
-    let resolved_ast = alias_resolver.with_module(&module_ast);
+    let resolved_ast = match alias_resolver.with_module(&module_ast) {
+        Ok(r) => r,
+        Err(err) => {
+            println!("type checking error: {:#?}", &err);
+            panic!("bad alias");
+        }
+    };
+
     // println!("resolved ast: {:#?}", &resolved_ast);
     let trait_checker = trait_checking::TraitChecker {};
     match trait_checker.with_module(&resolved_ast) {
@@ -76,7 +83,7 @@ fn main() {
 
 #[test]
 fn grammar() {
-    let id_gen = ast::IdGenerator::new();
+    let id_gen = ast::IdGenerator::new("S");
     assert!(grammar::LiteralIntParser::new().parse(&id_gen, "22").is_ok());
     assert!(grammar::IdentifierParser::new().parse(&id_gen, "foo").is_ok());
     assert!(grammar::LiteralIntParser::new().parse(&id_gen, "2a").is_err());

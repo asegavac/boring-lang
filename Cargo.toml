@@ -13,6 +13,6 @@ features = ["lexer"]
 [dependencies]
 lalrpop-util = "0.19.6"
 regex = "1"
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm7-0" }
+# inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "llvm7-0" }
 clap = "2.33.0"
 thiserror = "1"
