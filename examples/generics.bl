@@ -19,9 +19,9 @@ impl [K, V: MyTrait] Pair[K, V] {
 }
 
 fn main(): i64 {
-    let a = Pair{
+    let a = Pair[i64, Value]{
         k: 4,
         v: Value{value: 6},
     };
-    return a.get_value(999);
+    return a.get_value[i64](999).value;
 }

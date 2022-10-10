@@ -36,22 +36,24 @@ This language is under active development, progress will be marked here as the l
   - [x] Basic
   - [ ] Default Functions
 - [ ] Generics
-  - [ ] Basic
+  - [x] Basic
+  - [ ] Inferred
   - [ ] Higher kinded types
   - [ ] Variadic generic types
 - [ ] Control Flow
   - [x] If
   - [ ] While
   - [ ] For
+- [ ] Async-Await / Futures
 - [ ] Enums
 - [ ] Lambdas
-- [ ] Async-Await
 - [ ] Imports
 - [ ] Visibility
 - [ ] Const / Mut
 - [ ] Macros
+- [ ] Standard Library
 
-This project is actively looking for contributors, so if you're interested in programming language design or have experience working with LLVM, don't hesitate to contact.
+This project is actively looking for contributors, so if you're interested in programming language design or have experience working with LLVM, don't hesitate to contact. The current plan is to have this language transpile to a C-like subset of Rust, which can then be compiled into executable code.
 
 ## Philosophy
 
@@ -116,7 +118,7 @@ async fn handle(req: http.Request, resp: mut http.Response): {
   await resp.write(json.encode[ExampleResponse](response_data));
 }
 
-async fn main(args: Vec[Str], os: OS): i32 {
+async fn main(args: Vec[String], os: OS): i32 {
     let log = logging.new_logger(os.console.stdout());
     let router = http.Router("").add_route("/myroute", handle);
     let http_server = http.Server(os.net(), "localhost", 8080, router);
@@ -131,7 +133,7 @@ async fn main(args: Vec[Str], os: OS): i32 {
 All variables are immutable by default, to make them mutable use the `mut` keyword. Once a variable becomes immutable it cannot become mutable again. If you need it to become mutable, either implement the `clone` trait, or simply create a new one with the same data.
 
 ```rust
-let mut foo = Dict[String, Int32].new(); // constructor returns a mutable reference
+let mut foo = Dict[String, i32].new(); // constructor returns a mutable reference
 foo.insert("eggs", 12);
 foo.insert("bananas", 2);
 foo.insert("grapes", 2);
@@ -168,7 +170,7 @@ Context is an exceptionally useful feature in golang, but a common complaint is 
 The boring standard library solves this by using parametric polymorphism. Context is by default an empty object passed through the chain, and each function/set of context parameters is an additional trait condition applied at compile time.
 
 ```rust
-type HTTPRequest[Ctx: Context] = async fn(Ctx, http.Request, mut http.Response);
+type HTTPRequest = async fn[Ctx: Context](Ctx, http.Request, mut http.Response);
 
 pub fn tracing_middleware[Ctx: Tracing](handler: HTTPRequest[Ctx]): HTTPRequest {
   return async fn(ctx: Ctx, req: http.Request, resp: mut http.Response) {
@@ -209,7 +211,7 @@ Similar to python, folders/files represent the `.` seperated import path, but re
 import package.path as local_name;
 
 pub type MyStruct struct {
-  pub id: I32,
+  pub id: i32,
 }
 ```
 

@@ -8,7 +8,7 @@ struct Context {
     pub type_aliases: Vec<ast::AliasTypeDeclaration>,
 }
 
-fn resolve_type(ctx: &Context, type_: &ast::NamedTypeUsage) -> ast::TypeUsage {
+fn resolve_type(ctx: &Context, type_: &ast::NamedTypeUsage) -> Result<ast::TypeUsage> {
     let mut changed = true;
     let mut result = ast::TypeUsage::Named(type_.clone());
     while changed {
@@ -17,7 +17,7 @@ fn resolve_type(ctx: &Context, type_: &ast::NamedTypeUsage) -> ast::TypeUsage {
         match current {
             ast::TypeUsage::Named(named) => {
                 for alias in ctx.type_aliases.iter() {
-                    if named.name.name.value == alias.name.name.value {
+                    if named.name.name.value == alias.name.name.value { // is alias, replace
                         changed = true;
                         result = alias.replaces.clone();
                     }
@@ -26,13 +26,42 @@ fn resolve_type(ctx: &Context, type_: &ast::NamedTypeUsage) -> ast::TypeUsage {
             _ => break,
         }
     }
-    return result;
+    match &result {
+        ast::TypeUsage::Named(named) => {
+            match &named.type_parameters {
+                ast::GenericUsage::Known(known) => {
+                    let mut result_params = vec!();
+                    for param in known.parameters.iter() {
+                        result_params.push(process_type(ctx, param)?);
+                    }
+                    let mut new_named = named.clone();
+                    new_named.type_parameters = ast::GenericUsage::new(&result_params);
+                    result = ast::TypeUsage::Named(new_named);
+                },
+                _ => {}
+            }
+        },
+        ast::TypeUsage::Function(func) => {
+            match &type_.type_parameters {
+                ast::GenericUsage::Known(known) => {
+                    if known.parameters.len() > 0 {
+                        return Err(errors::TypingError::InvalidTypeParameterOnAlias{alias: type_.name.clone()});
+                    }
+                },
+                _ => {} //skip
+            }
+        },
+        _ => {
+            panic!("alias of a non-type, not possible");
+        }
+    }
+    return Ok(result);
 }
 
 fn process_type(ctx: &Context, type_: &ast::TypeUsage) -> Result<ast::TypeUsage> {
     match type_ {
         ast::TypeUsage::Named(named) => {
-            return Ok(resolve_type(ctx, named));
+            return Ok(resolve_type(ctx, named)?);
         }
         ast::TypeUsage::Function(function) => {
             let mut arguments = vec!();
@@ -50,7 +79,7 @@ fn process_type(ctx: &Context, type_: &ast::TypeUsage) -> Result<ast::TypeUsage>
         ast::TypeUsage::Namespace(namespace) => {
             match namespace {
                 ast::NamespaceTypeUsage::Type(named_type)=> {
-                    let result = resolve_type(ctx, named_type);
+                    let result = resolve_type(ctx, named_type)?;
                     match result {
                         ast::TypeUsage::Named(named) => {
                             return Ok(ast::TypeUsage::Namespace(ast::NamespaceTypeUsage::Type(named)));
@@ -286,7 +315,7 @@ impl TypeAliasResolver {
                             type_parameters: literal_struct.type_parameters.clone(),
                             name: literal_struct.name.clone(),
                         },
-                    );
+                    )?;
                     let new_name = match &result {
                         ast::TypeUsage::Named(named) => named.name.clone(),
                         _ => panic!("LiteralStruct resolved to non-named-type"),

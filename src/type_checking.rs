@@ -29,12 +29,8 @@ fn type_meets_trait_bounds(ctx: &Context, type_: &ast::TypeUsage, bounds: &Vec<a
         };
         match &ctx.environment[&named.name.name.value] {
             NamedEntity::NamedType(named_type) => {
-                println!("env value: {:?}", &ctx.environment[&named.name.name.value]);
                 let mut found = false;
                 for impl_ in named_type.impls.iter() {
-                    println!("for: {:?}", &named.name.name.value);
-                    println!("bounds: {:?}", &bound.name.value);
-                    println!("trait: {:?}", &impl_.trait_);
                     if impl_.trait_ == Some(bound.name.value.to_string()) {
                         found = true;
                         break;
@@ -55,20 +51,37 @@ fn type_meets_trait_bounds(ctx: &Context, type_: &ast::TypeUsage, bounds: &Vec<a
 fn replace_generic_with_concrete(replace: &ast::Identifier, with_type: &ast::TypeUsage, in_type: &ast::TypeUsage) -> ast::TypeUsage {
     match in_type {
         ast::TypeUsage::Named(named) => {
+            let mut result = named.clone();
             if named.name.name.value == replace.name.value {
                 return with_type.clone();
             }
-            return in_type.clone();
+            result.type_parameters = match &named.type_parameters {
+                ast::GenericUsage::Known(known) => {
+                    let mut param_result = vec!();
+                    for param in known.parameters.iter() {
+                        param_result.push(replace_generic_with_concrete(replace, with_type, param));
+                    }
+                    ast::GenericUsage::new(&param_result)
+                },
+                ast::GenericUsage::Unknown => {
+                    ast::GenericUsage::Unknown
+                },
+            };
+            return ast::TypeUsage::Named(result);
         },
         ast::TypeUsage::Function(func) => {
-            return ast::TypeUsage::Function(ast::FunctionTypeUsage{
+            let result = ast::TypeUsage::Function(ast::FunctionTypeUsage{
                 arguments: func.arguments.iter().map(|arg| {
                     replace_generic_with_concrete(replace, with_type, arg)
                 }).collect(),
                 return_type: Box::new(replace_generic_with_concrete(replace, with_type, &func.return_type)),
             });
+            return result;
         },
-        _ => panic!("unknown in a generic, this should not happen")
+        _ => {
+            // in_type is unknown, skip
+            return in_type.clone();
+        },
     };
 }
 
@@ -89,9 +102,7 @@ impl TypeConstructor {
                 // 1. for arg in args, assert arg matches self.generic traits via impl name
                 // 2. replace type usage names with arg types
                 for i in 0..known_usage.parameters.len() {
-                    println!("test: {:?}\n{:?}", &known_usage.parameters[i], &self.generic.parameters[i].bounds);
                     if !type_meets_trait_bounds(ctx, &known_usage.parameters[i], &self.generic.parameters[i].bounds) {
-                        panic!("InvalidTypeForGeneric");
                         return Err(errors::TypingError::InvalidTypeForGeneric);
                     }
                     result = replace_generic_with_concrete(&self.generic.parameters[i].name, &known_usage.parameters[i], &self.type_usage);
@@ -172,29 +183,59 @@ impl EnvType {
     }
 
     fn type_construct(&self, ctx: &Context, usage: &ast::GenericUsage) -> Result<EnvType> {
-        let mut fields = HashMap::new();
-        for (k, v) in self.fields.iter() {
-            let type_usage = TypeConstructor{generic: self.generic.clone(), type_usage: v.clone()}.construct(ctx, usage)?;
-            fields.insert(k.clone(), type_usage);
+        // steps
+        // 1. Check if matches bounds, create unknowns if necessary.
+        // 2. Replace all (Named+generics or function args/return) recursively.
+        // 3. Return updated, plus known generic usage to replace any unknown usage.
+        let known_usage = match usage {
+            ast::GenericUsage::Known(known) => known.clone(),
+            ast::GenericUsage::Unknown => {
+                let mut new_unknowns = vec!();
+                for _ in 0..self.generic.parameters.len() {
+                    new_unknowns.push(ast::TypeUsage::new_unknown(&ctx.id_generator));
+                }
+                ast::GenericInstantiation {
+                    parameters: new_unknowns.iter().map(|tp| tp.clone()).collect(),
+                }
+            },
+        };
+        if known_usage.parameters.len() != self.generic.parameters.len() {
+            return Err(errors::TypingError::WrongNumberOfTypeParameters{});
         }
-        let mut impls = vec!();
-        for impl_ in self.impls.iter() {
-            let mut functions = HashMap::new();
-            for (name, func) in impl_.functions.iter() {
-                let type_usage = TypeConstructor{generic: self.generic.clone(), type_usage: func.type_usage.clone()}.construct(ctx, usage)?;
-                functions.insert(name.clone(), TypeConstructor{generic: func.generic.clone(), type_usage: type_usage});
+        for i in 0..known_usage.parameters.len() {
+            if !type_meets_trait_bounds(ctx, &known_usage.parameters[i], &self.generic.parameters[i].bounds) {
+                return Err(errors::TypingError::InvalidTypeForGeneric);
             }
-            impls.push(EnvImpl{
-                trait_: impl_.trait_.clone(),
-                functions: functions,
-            });
         }
-        return Ok(EnvType{
-            generic: ast::Generic{parameters: vec!()},
-            is_a: self.is_a.clone(),
-            fields: fields,
-            impls: impls,
-        });
+        // Generic type matches, time to replace
+        let mut result = self.clone();
+        for i in 0..known_usage.parameters.len() {
+            let mut fields = HashMap::new();
+            for (k, v) in result.fields.iter() {
+                let type_usage = replace_generic_with_concrete(&self.generic.parameters[i].name, &known_usage.parameters[i], &v);
+                fields.insert(k.clone(), type_usage);
+            }
+            let mut impls = vec!();
+            for impl_ in result.impls.iter() {
+                let mut functions = HashMap::new();
+                for (name, func) in impl_.functions.iter() {
+                    let type_usage = replace_generic_with_concrete(&self.generic.parameters[i].name, &known_usage.parameters[i], &func.type_usage);
+
+                    functions.insert(name.clone(), TypeConstructor{generic: func.generic.clone(), type_usage: type_usage});
+                }
+                impls.push(EnvImpl{
+                    trait_: impl_.trait_.clone(),
+                    functions: functions,
+                });
+            }
+            result = EnvType{
+                generic: ast::Generic{parameters: vec!()},
+                is_a: self.is_a.clone(),
+                fields: fields,
+                impls: impls,
+            };
+        }
+        return Ok(result);
     }
 }
 
@@ -410,6 +451,7 @@ fn get_attr(ctx: &Context, get_from: &NamedEntity, attribute: &ast::Identifier) 
                     _ => panic!("variable has non-type as type"),
                 };
                 let type_ = env_type.type_construct(ctx, &named.type_parameters)?;
+
                 let attr = get_attr(ctx, &NamedEntity::NamedType(type_), attribute)?;
                 let method = match attr {
                     StructAttr::Field(field) => return Ok(StructAttr::Field(field)),
@@ -463,8 +505,6 @@ impl Context {
                 impls: vec!(),
             };
             for bound in parameter.bounds.iter() {
-                println!("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-                println!("found bound: {:?}", bound);
                 if !self.environment.contains_key(&bound.name.value) {
                     return Err(errors::TypingError::TypeDoesNotExist {
                         identifier: bound.clone(),
@@ -545,7 +585,6 @@ fn type_exists(ctx: &Context, type_: &ast::TypeUsage) -> Result<()> {
     let result = match type_ {
         ast::TypeUsage::Named(named) => {
             if !ctx.environment.contains_key(&named.name.name.value) {
-                panic!("foo");
                 return Err(errors::TypingError::TypeDoesNotExist {
                     identifier: named.name.clone(),
                 });
@@ -623,7 +662,32 @@ fn unify(ctx: &Context, t1: &ast::TypeUsage, t2: &ast::TypeUsage) -> Result<Subs
     match (t1, t2) {
         (ast::TypeUsage::Named(named1), ast::TypeUsage::Named(named2)) => {
             if named1.name.name.value == named2.name.name.value {
-                return Ok(SubstitutionMap::new());
+                let mut result = SubstitutionMap::new();
+                match (&named1.type_parameters, &named2.type_parameters) {
+                    (ast::GenericUsage::Known(known1), ast::GenericUsage::Known(known2)) => {
+                        if known1.parameters.len() != known2.parameters.len() {
+                            return Err(errors::TypingError::TypeMismatch {
+                                type_one: t1.clone(),
+                                type_two: t2.clone(),
+                            });
+                        }
+                        for (i, _) in known1.parameters.iter().enumerate() {
+                            result = compose_substitutions(
+                                ctx,
+                                &result,
+                                &unify(
+                                    ctx,
+                                    &apply_substitution(ctx, &result, &known1.parameters[i])?,
+                                    &apply_substitution(ctx, &result, &known2.parameters[i])?,
+                                )?,
+                            )?;
+                        }
+                    },
+                    _ => {
+                        panic!("should never be unknown")
+                    },
+                }
+                return Ok(result);
             }
         }
         _ => {}
@@ -777,7 +841,8 @@ impl TypeChecker {
                 }
                 ast::ModuleItem::Impl(impl_) => {
                     let (impl_result, impl_subst) = self.with_impl(&ctx, &subst, impl_)?;
-                    subst = compose_substitutions(&ctx, &subst, &impl_subst)?;
+                    // TODO: errors on generics not exist at global scope
+                    // subst = compose_substitutions(&ctx, &subst, &impl_subst)?;
                     ast::ModuleItem::Impl(impl_result)
                 }
             });
@@ -929,7 +994,6 @@ impl TypeChecker {
             &impl_ctx,
             &ast::TypeUsage::new_named(&impl_.struct_.name.clone(), &ast::GenericUsage::Unknown),
         )?;
-        println!("env {:?}", impl_ctx);
         let mut functions = vec![];
         for function in impl_.functions.iter() {
             let (result, function_subs) = self.with_function(&impl_ctx, &substitutions, function)?;
@@ -1270,6 +1334,7 @@ impl TypeChecker {
                 });
             }
         };
+
         if struct_type.fields.len() != literal_struct.fields.len() {
             return Err(errors::TypingError::StructLiteralFieldsMismatch {
                 struct_name: literal_struct.name.clone(),
@@ -1321,7 +1386,6 @@ impl TypeChecker {
             ast::TypeUsage::Function(fn_type) => {
                 substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &function_call.type_, &*fn_type.return_type)?)?;
                 if function_call.arguments.len() != fn_type.arguments.len() {
-                    println!("{:?}\n{:?}", &function_call, &fn_type);
                     return Err(errors::TypingError::ArgumentLengthMismatch {});
                 }
             }
@@ -1479,7 +1543,6 @@ impl TypeChecker {
     ) -> Result<(ast::StructGetter, SubstitutionMap)> {
         let mut substitution = substitution.clone();
         let (source, subst) = self.with_expression(ctx, &substitution, &struct_getter.source)?;
-        println!("source: {:?}", &source);
         substitution = compose_substitutions(ctx, &substitution, &subst)?;
 
         let field_type = match get_attr(ctx, &NamedEntity::Variable(source.type_.clone()), &struct_getter.attribute)? {

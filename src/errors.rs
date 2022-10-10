@@ -53,6 +53,10 @@ pub enum TypingError {
     },
     #[error("invalid use of alias")]
     InvalidUseofAlias,
+    #[error("alias cannot have type parameters")]
+    InvalidTypeParameterOnAlias {
+        alias: ast::Identifier,
+    },
     #[error("type cannot be used for generic")]
     InvalidTypeForGeneric,
     #[error("multiple errors")]

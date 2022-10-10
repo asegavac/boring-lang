@@ -90,10 +90,10 @@ pub LiteralStruct: ast::LiteralStruct = {
             },
             None => {
                 ast::LiteralStruct{
-                    type_parameters: ast::GenericUsage::Unknown,
+                    type_parameters: ast::GenericUsage::new(&[]),
                     name: i.clone(),
                     fields: field_list,
-                    type_: ast::TypeUsage::new_named(&i, &ast::GenericUsage::Unknown),
+                    type_: ast::TypeUsage::new_named(&i, &ast::GenericUsage::new(&[])),
                 }
             }
         }
@@ -207,11 +207,24 @@ pub Block: ast::Block = {
     }
 };
 
-pub NamedTypeUsage: ast::NamedTypeUsage = {
+pub PartialNamedTypeUsage: ast::NamedTypeUsage = {
     <n:SpannedIdentifier> <gu:GenericUsage?> => match gu {
         Some(tp) => ast::NamedTypeUsage{type_parameters: tp, name: n},
         None => ast::NamedTypeUsage{type_parameters: ast::GenericUsage::Unknown, name: n},
     },
+};
+
+pub NamedTypeUsage: ast::NamedTypeUsage = {
+    <n:SpannedIdentifier> <gu:GenericUsage?> => match gu {
+        Some(tp) => ast::NamedTypeUsage{type_parameters: tp, name: n},
+        None => ast::NamedTypeUsage{type_parameters: ast::GenericUsage::new(&[]), name: n},
+    },
+};
+
+pub PartialTypeUsage: ast::TypeUsage = {
+    <n:PartialNamedTypeUsage> => ast::TypeUsage::Named(n),
+    "fn" "(" <args:Comma<PartialTypeUsage>> ")" => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: Box::new(ast::new_unit())}),
+    "fn" "(" <args:Comma<PartialTypeUsage>> ")" ":" <rt:PartialTypeUsage> => ast::TypeUsage::Function(ast::FunctionTypeUsage{arguments: args, return_type: Box::new(rt)}),
 };
 
 pub TypeUsage: ast::TypeUsage = {
