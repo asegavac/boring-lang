@@ -44,6 +44,7 @@ pub struct Function {
 pub enum Value {
     Numeric(NumericValue),
     Bool(bool),
+    String(String),
     Function(Function),
     Struct(Arc<Mutex<StructValue>>),
     Unit,
@@ -207,6 +208,12 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
             name: "!".to_string(),
         })),
     );
+    result.insert(
+        "String".to_string(),
+        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Primitive(ast::PrimitiveTypeDeclaration {
+            name: "String".to_string(),
+        })),
+    );
 
     return result;
 }
@@ -330,6 +337,10 @@ impl TreeWalkInterpreter {
             ast::Subexpression::LiteralBool(literal_bool) => {
                 let value: bool = if &literal_bool.value.value == "true" { true } else { false };
                 return ExpressionResult::Value(Value::Bool(value));
+            }
+            ast::Subexpression::LiteralString(literal_string) => {
+                let value: String = literal_string.value.value.to_string();
+                return ExpressionResult::Value(Value::String(value));
             }
             ast::Subexpression::LiteralStruct(literal_struct) => {
                 let declaration = match &ctx.environment[&literal_struct.name.name.value] {

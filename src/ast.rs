@@ -173,6 +173,12 @@ pub struct LiteralBool {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LiteralString {
+    pub value: Spanned<String>,
+    pub type_: TypeUsage,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralStruct {
     pub type_parameters: GenericUsage,
     pub name: Identifier,
@@ -227,6 +233,7 @@ pub enum Subexpression {
     LiteralInt(LiteralInt),
     LiteralFloat(LiteralFloat),
     LiteralBool(LiteralBool),
+    LiteralString(LiteralString),
     LiteralStruct(LiteralStruct),
     FunctionCall(FunctionCall),
     VariableUsage(VariableUsage),

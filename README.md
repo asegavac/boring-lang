@@ -20,6 +20,7 @@ This language is under active development, progress will be marked here as the l
 - [x] Functions
 - [x] Int Literals
 - [x] Float Literals
+- [x] String Literals
 - [x] Block expression
 - [x] Return keyword
 - [x] Normal assignment

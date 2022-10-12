@@ -308,6 +308,10 @@ impl TypeAliasResolver {
                     value: literal_bool.value.clone(),
                     type_: process_type(ctx, &literal_bool.type_)?,
                 }),
+                ast::Subexpression::LiteralString(literal_string) => ast::Subexpression::LiteralString(ast::LiteralString {
+                    value: literal_string.value.clone(),
+                    type_: process_type(ctx, &literal_string.type_)?,
+                }),
                 ast::Subexpression::LiteralStruct(literal_struct) => {
                     let result = resolve_type(
                         ctx,

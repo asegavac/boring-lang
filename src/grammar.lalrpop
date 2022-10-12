@@ -34,6 +34,8 @@ match {
     "struct",
     "impl",
     ",",
+    r"'(\\'|[^'])*'",
+    r#""(\\"|[^"])*""#,
 
     r"\s*" => { },
     r"//[^\n\r]*[\n\r]*" => { }, // `// comment`
@@ -64,6 +66,16 @@ pub LiteralBool: String = {
 pub SpannedLiteralBool: ast::LiteralBool = {
     <literal_bool:Spanned<LiteralBool>> => ast::LiteralBool{value: literal_bool, type_: ast::TypeUsage::new_builtin("bool".to_string())}
 };
+
+pub LiteralString: String = {
+    <s:r"'(\\'|[^'])*'"> => String::from(&s[1..s.len()-1]),
+    <s:r#""(\\"|[^"])*""#> => String::from(&s[1..s.len()-1]),
+};
+
+pub SpannedLiteralString: ast::LiteralString = {
+    <literal_string:Spanned<LiteralString>> => ast::LiteralString{value: literal_string, type_: ast::TypeUsage::new_builtin("String".to_string())}
+};
+
 
 pub Identifier: String = {
     <i:r"[A-Za-z_][A-Za-z0-9_]*"> => i.to_string()
@@ -163,6 +175,7 @@ pub Term: ast::Expression = {
     SpannedLiteralInt => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralInt(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     SpannedLiteralFloat => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralFloat(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     SpannedLiteralBool => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralBool(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
+    SpannedLiteralString => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralString(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     LiteralStruct => ast::Expression{subexpression: Box::new(ast::Subexpression::LiteralStruct(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     FunctionCall => ast::Expression{subexpression: Box::new(ast::Subexpression::FunctionCall(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},
     StructGetter => ast::Expression{subexpression: Box::new(ast::Subexpression::StructGetter(<>)), type_: ast::TypeUsage::new_unknown(&id_generator)},

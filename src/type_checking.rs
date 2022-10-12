@@ -386,6 +386,15 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
             impls: vec![],
         }),
     );
+    result.insert(
+        "String".to_string(),
+        NamedEntity::NamedType(EnvType {
+            generic: ast::Generic{parameters: vec!()},
+            is_a: TypeType::Scalar,
+            fields: HashMap::new(),
+            impls: vec![],
+        }),
+    );
     return result;
 }
 
@@ -1215,6 +1224,12 @@ impl TypeChecker {
                 substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &result.type_)?)?;
                 ast::Subexpression::LiteralBool(result)
             }
+            ast::Subexpression::LiteralString(literal_string) => {
+                let (result, subst) = self.with_literal_string(ctx, &substitution, literal_string)?;
+                substitution = compose_substitutions(ctx, &substitution, &subst)?;
+                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &expression.type_, &result.type_)?)?;
+                ast::Subexpression::LiteralString(result)
+            }
             ast::Subexpression::LiteralStruct(literal_struct) => {
                 let (result, subst) = self.with_literal_struct(ctx, &substitution, literal_struct)?;
                 substitution = compose_substitutions(ctx, &substitution, &subst)?;
@@ -1307,6 +1322,21 @@ impl TypeChecker {
             ast::LiteralBool {
                 value: literal_bool.value.clone(),
                 type_: apply_substitution(ctx, &substitution, &literal_bool.type_)?,
+            },
+            substitution.clone(),
+        ))
+    }
+
+    fn with_literal_string(
+        self: &Self,
+        ctx: &Context,
+        substitution: &SubstitutionMap,
+        literal_string: &ast::LiteralString,
+    ) -> Result<(ast::LiteralString, SubstitutionMap)> {
+        Ok((
+            ast::LiteralString {
+                value: literal_string.value.clone(),
+                type_: apply_substitution(ctx, &substitution, &literal_string.type_)?,
             },
             substitution.clone(),
         ))
