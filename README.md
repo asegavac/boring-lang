@@ -3,15 +3,16 @@
 The Boring Programming Language (Boring-Lang) is an attempt to create an easy, productive, general purpose programming language that makes as few interesting choices as possible while still being in line with modern concepts in programming languages.
 
 The language (goals):
-* is compiled with a run-time (llvm for convenience + c/rust compatibility)
-* has managed memory (via strong/weak pointers and automatic reference counting)
-* uses async-await for all IO, with a built-in multi-core scheduler (tokio-based)
-* supports algebraic data types (Result type for errors, Maybe/Optional type for nullables)
-* supports parametric polymorphism (generics) with higher kinded types
-* uses struct+traits, rather than classes or stuct+interfaces
-* has a rich standard library (similar scale to python or go)
-* is immutable by default
-* is sandboxed by default
+
+- is compiled with a run-time (llvm for convenience + c/rust compatibility)
+- has managed memory (via strong/weak pointers and automatic reference counting)
+- uses monadic IO, with a built-in multi-core scheduler (tokio-based)
+- supports algebraic data types (Result type for errors, Maybe/Optional type for nullables)
+- supports parametric polymorphism (generics) with higher kinded types
+- uses struct+traits, rather than classes or stuct+interfaces
+- has a rich standard library (similar scale to python or go)
+- is immutable by default
+- is sandboxed by default
 
 It's a middle-ground of Rust, Golang, Swift, Typescript, and Python. The goal is not to break any new ground in PL theory, or even create a language anyone likes, but rather to create a language with as few deal-breakers as possible for maximum day-to-day industrial programming ergonomics.
 
@@ -45,7 +46,7 @@ This language is under active development, progress will be marked here as the l
   - [x] If
   - [ ] While
   - [ ] For
-- [ ] Async-Await / Futures
+- [ ] IO
 - [ ] Enums
 - [ ] Lambdas
 - [ ] Imports
@@ -67,15 +68,17 @@ We accomplish this in a few ways:
 
 ### Sandboxing
 
-Unlike many other programming languages, boringlang's `main` function takes in two arguments: a vector of command line arguments, and a reference to the OS which is the program's only link to the outside world. To open a file in boringlang, you cannot just call `open` anywhere, you *must* call `os.fs().open("path")`. All `os.whatever()` methods return an interface for interacting with that part of the OS, such as `fs`, `net`, `datetime`, and `syscall`. Because this is the only way to interact with the world outside of the program, this means that any IO the program does can be trivially mocked for testing, and that all operations the program can perform are sandboxed. If a function doesn't require a reference to the `FS` trait, you can be sure it doesn't interact with the file system.
+Unlike many other programming languages, boringlang's `main` function takes in two arguments: a vector of command line arguments, and a reference to the OS which is the program's only link to the outside world. To open a file in boringlang, you cannot just call `open` anywhere, you _must_ call `os.fs().open("path")`. All `os.whatever()` methods return an interface for interacting with that part of the OS, such as `fs`, `net`, `datetime`, and `syscall`. Because this is the only way to interact with the world outside of the program, this means that any IO the program does can be trivially mocked for testing, and that all operations the program can perform are sandboxed. If a function doesn't require a reference to the `FS` trait, you can be sure it doesn't interact with the file system.
 
 ### "Effects" System
 
-Boring-lang doesn't have a formal effects system, but rather the "effects" are simply traits that get tacked onto a functions type. For an example, let's use a GUI program where clicking on a button can have an effect, in this case writing to a file.
+Boring-lang doesn't use an algebraic effects system, since those often work by just creating one super monad that everything uses so it has to compose with itself. Monads not composing is something we treat as a feature, rather than a bug, as usually you rarely ever want to go directly from an `IO[Result[Optional[int], Error]]` directly to an int, but rather you want to handle each stage of the stack individually (join the promise, handle the error, default the optional).
+
+Instead in Boring-lang the "effects" are simply traits that get tacked onto a functions type. For an example, let's use a GUI program where clicking on a button can have an effect, in this case writing to a file.
 
 ```rust
 type ClickHandler trait {
-    async fn on_click(self): ClickError;
+    fn on_click(self): IO[Result[(), ClickError]];
 }
 
 type MyButton[T: FS] struct { // T is a generic type implementing fs
@@ -83,18 +86,20 @@ type MyButton[T: FS] struct { // T is a generic type implementing fs
 }
 
 impl MyButton[T] {
-    fn new(fs: T): MyButton {
+    pub fn new(fs: T): MyButton {
         return MyButton{fs: fs};
     }
 }
 
 impl ClickHandler for MyButton[T] {
-    async fn on_click(self): ClickError {
+    pub fn on_click(self): IO[Result[(), ClickError]] {
         let file = await self.fs.open("my_file")?;
         await file.write("foo")?;
     }
 }
 ```
+
+Because you must get your `FS` handle from the program's `main` and all side effects are captured in the monad stack of the result type, all effects are explicit and encoded directly in to the type system.
 
 ## Http Server Example
 
@@ -103,29 +108,39 @@ import net.http as http;
 import logging as logging;
 import json as json;
 
+
 type ExampleResponse struct {
-  id: i32,
-  name: Str,
-  email: Str,
+  pub id: i32;
+  pub name: str;
+  pub email: str;
 }
 
-async fn handle(req: http.Request, resp: mut http.Response): {
-  let response_data = ExampleResponse{
-    id: 4,
-    name: "Andrew",
-    email: "andrew@boringlang.com",
-  };
-  await resp.set_status(200);
-  await resp.write(json.encode[ExampleResponse](response_data));
+type Router struct {
+  logger: logging::Logger;
+
+  pub fn new(logger: logging::Logger): Router {
+    return Self{logger: logger};
+  }
+
+  pub fn get_user_data(self: Self, req: http.Request): IO[Result[http::Response, http::Error]] {
+    let response_data = ExampleResponse{
+      id: 4,
+      name: "Andrew",
+      email: "andrew@boringlang.com",
+    };
+    self.logger.info("getting user data")?;
+    return ok(http::Response::ok(json::dumps(response_data)?));
+  }
 }
 
-async fn main(args: Vec[String], os: OS): i32 {
-    let log = logging.new_logger(os.console.stdout());
-    let router = http.Router("").add_route("/myroute", handle);
-    let http_server = http.Server(os.net(), "localhost", 8080, router);
-    let err = await http_server.serve_forever();
-    await log.info("error serving: ", err);
-    return 1;
+pub fn main(args: List[String], os: OS): IO[i32] {
+  let logger = logging::ConsoleLogger::new(os.console.stdout());
+  let router = Router::new(logger);
+  let app = http::Router::new("").add_route("/myroute", router.get_user_data);
+  let http_server = http::Server::new(os.net(), "localhost", 8080, app);
+  let err = http_server.serve_forever()?;
+  logger.info("error serving: ", err)?;
+  return 1;
 }
 ```
 
@@ -151,15 +166,19 @@ Methods on a struct must specify if they mutate the struct.
 
 ```rust
 impl Dict[Key: Hashable, Value] {
-  fn insert(self: mut Self, key: Key, value: Value) {
+  pub fn insert(self: mut Self, key: Key, value: Value) {
     // mutate self here
   }
 
-  fn get(self: Self, key: Key) Optional[Value] {
+  pub fn get(self: Self, key: Key) Optional[Value] {
     // no need for `mut`
   }
 }
 ```
+
+## Error Handling
+
+Built in support for error handling, via Result types and Error enums, with capabilities similar to Rust's thiserror library.
 
 ## Context
 
@@ -206,7 +225,7 @@ for the above examples, you would pass a context type that implements all three 
 
 ## Import System
 
-Similar to python, folders/files represent the `.` seperated import path, but relative imports are *not* supported. Exported values must be marked with `pub`. All imports take the form:
+Similar to python, folders/files represent the `.` seperated import path, but relative imports are _not_ supported. Exported values must be marked with `pub`. All imports take the form:
 
 ```rust
 import package.path as local_name;
@@ -216,8 +235,8 @@ pub type MyStruct struct {
 }
 ```
 
-
 ## Basic Statements
+
 ### `if`
 
 `if` is an expression in boring-lang, with the last expression in a block being the return value.
@@ -233,7 +252,7 @@ let a = if (true) {
 
 ```
 
-Conditions do not require parenthesis and *must* evaluate to the Boolean type.
+Conditions do not require parenthesis and _must_ evaluate to the Boolean type.
 
 ### Loops
 
@@ -271,7 +290,7 @@ for i in range(100) {
 
 ### `with`
 
-`with` and `async with` blocks are similar to the python statement with the same name. But unlike the python version, `with` blocks are expressions. `with` blocks take in an expression that implements the `With` or `AWith` trait, and execute a block that *may* return a result (non-result returns are assumed success).
+`with` and `async with` blocks are similar to the python statement with the same name. But unlike the python version, `with` blocks are expressions. `with` blocks take in an expression that implements the `With` or `AWith` trait, and execute a block that _may_ return a result (non-result returns are assumed success).
 
 ```rust
 // commits on success, aborts on error.
