@@ -76,7 +76,7 @@ Unlike many other programming languages, boringlang's `main` function takes in t
 
 Boring-lang doesn't use an algebraic effects system, since those often work by just creating one super monad that everything uses so it has to compose with itself. Monads not composing is something we treat as a feature, rather than a bug, as usually you rarely ever want to go directly from an `IO[Result[Optional[int], Error]]` directly to an int, but rather you want to handle each stage of the stack individually (join the promise, handle the error, default the optional).
 
-Not being able to "await" an async function in an iterator's `.map()` call is likewise intentional. This language despises the notion of being able to do anything, anywhere, and is rather built with the belief that the pain of virality in typing will force people to write better code.
+Not being able to "await" an async function in an iterator's `.map()` call is likewise intentional. This language despises the notion of being able to do anything, anywhere, and is rather built with the belief that the pain of virality in typing will force people to write better code. It is event impossible to implement a singleton in the language due to the lack of any global variables or globally mutable state.
 
 Instead in Boring-lang the "effects" are simply traits that get tacked onto a functions type. For an example, let's use a GUI program where clicking on a button can have an effect, in this case writing to a file.
 
