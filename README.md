@@ -1,3 +1,5 @@
+Note: This is mostly a background project that I like to tinker with while I build real things. Consistant progress on this language is unlikely any time soon.
+
 # Boring Lang
 
 The Boring Programming Language (Boring-Lang) is an attempt to create an easy, productive, general purpose programming language that makes as few interesting choices as possible while still being in line with modern concepts in programming languages.
