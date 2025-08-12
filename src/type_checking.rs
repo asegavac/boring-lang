@@ -19,10 +19,10 @@ fn type_meets_trait_bounds(ctx: &Context, type_: &ast::TypeUsage, bounds: &Vec<a
             ast::TypeUsage::Named(named) => named,
             ast::TypeUsage::Function(_) => {
                 return false;
-            },
+            }
             ast::TypeUsage::Unknown(_) => {
                 return true; // unknown this pass, skip, test once known
-            },
+            }
             ast::TypeUsage::Namespace(_) => {
                 panic!("impossible");
             }
@@ -39,7 +39,7 @@ fn type_meets_trait_bounds(ctx: &Context, type_: &ast::TypeUsage, bounds: &Vec<a
                 if found == false {
                     return false;
                 }
-            },
+            }
             _ => {
                 panic!("type is a variable, this should not happen");
             }
@@ -57,47 +57,47 @@ fn replace_generic_with_concrete(replace: &ast::Identifier, with_type: &ast::Typ
             }
             result.type_parameters = match &named.type_parameters {
                 ast::GenericUsage::Known(known) => {
-                    let mut param_result = vec!();
+                    let mut param_result = vec![];
                     for param in known.parameters.iter() {
                         param_result.push(replace_generic_with_concrete(replace, with_type, param));
                     }
                     ast::GenericUsage::new(&param_result)
-                },
-                ast::GenericUsage::Unknown => {
-                    ast::GenericUsage::Unknown
-                },
+                }
+                ast::GenericUsage::Unknown => ast::GenericUsage::Unknown,
             };
             return ast::TypeUsage::Named(result);
-        },
+        }
         ast::TypeUsage::Function(func) => {
-            let result = ast::TypeUsage::Function(ast::FunctionTypeUsage{
-                arguments: func.arguments.iter().map(|arg| {
-                    replace_generic_with_concrete(replace, with_type, arg)
-                }).collect(),
+            let result = ast::TypeUsage::Function(ast::FunctionTypeUsage {
+                arguments: func
+                    .arguments
+                    .iter()
+                    .map(|arg| replace_generic_with_concrete(replace, with_type, arg))
+                    .collect(),
                 return_type: Box::new(replace_generic_with_concrete(replace, with_type, &func.return_type)),
             });
             return result;
-        },
+        }
         _ => {
             // in_type is unknown, skip
             return in_type.clone();
-        },
+        }
     };
 }
 
 impl TypeConstructor {
     fn from_declaration(declaration: &ast::FunctionDeclaration) -> TypeConstructor {
-        return TypeConstructor{
+        return TypeConstructor {
             generic: declaration.generic.clone(),
             type_usage: declaration.to_type(),
-        }
+        };
     }
     fn construct(&self, ctx: &Context, usage: &ast::GenericUsage) -> Result<ast::TypeUsage> {
         match usage {
             ast::GenericUsage::Known(known_usage) => {
                 let mut result = self.type_usage.clone();
                 if known_usage.parameters.len() != self.generic.parameters.len() {
-                    return Err(errors::TypingError::WrongNumberOfTypeParameters{});
+                    return Err(errors::TypingError::WrongNumberOfTypeParameters {});
                 }
                 // 1. for arg in args, assert arg matches self.generic traits via impl name
                 // 2. replace type usage names with arg types
@@ -108,13 +108,13 @@ impl TypeConstructor {
                     result = replace_generic_with_concrete(&self.generic.parameters[i].name, &known_usage.parameters[i], &self.type_usage);
                 }
                 return Ok(result);
-            },
+            }
             ast::GenericUsage::Unknown => {
                 // generate new Unknown Types for matching
                 let mut result = self.type_usage.clone();
                 for param in self.generic.parameters.iter() {
                     let id = ctx.id_generator.next();
-                    let unknown = ast::TypeUsage::Unknown(ast::UnknownTypeUsage{name: id});
+                    let unknown = ast::TypeUsage::Unknown(ast::UnknownTypeUsage { name: id });
                     result = replace_generic_with_concrete(&param.name, &unknown, &self.type_usage);
                 }
                 return Ok(result);
@@ -165,9 +165,6 @@ impl EnvType {
                 ast::TraitItem::FunctionDeclaration(fd) => {
                     functions.insert(fd.name.name.value.to_string(), TypeConstructor::from_declaration(&fd));
                 }
-                ast::TraitItem::Function(f) => {
-                    functions.insert(f.declaration.name.name.value.to_string(), TypeConstructor::from_declaration(&f.declaration));
-                }
             }
         }
         let impl_ = EnvImpl {
@@ -190,17 +187,17 @@ impl EnvType {
         let known_usage = match usage {
             ast::GenericUsage::Known(known) => known.clone(),
             ast::GenericUsage::Unknown => {
-                let mut new_unknowns = vec!();
+                let mut new_unknowns = vec![];
                 for _ in 0..self.generic.parameters.len() {
                     new_unknowns.push(ast::TypeUsage::new_unknown(&ctx.id_generator));
                 }
                 ast::GenericInstantiation {
                     parameters: new_unknowns.iter().map(|tp| tp.clone()).collect(),
                 }
-            },
+            }
         };
         if known_usage.parameters.len() != self.generic.parameters.len() {
-            return Err(errors::TypingError::WrongNumberOfTypeParameters{});
+            return Err(errors::TypingError::WrongNumberOfTypeParameters {});
         }
         for i in 0..known_usage.parameters.len() {
             if !type_meets_trait_bounds(ctx, &known_usage.parameters[i], &self.generic.parameters[i].bounds) {
@@ -215,21 +212,28 @@ impl EnvType {
                 let type_usage = replace_generic_with_concrete(&self.generic.parameters[i].name, &known_usage.parameters[i], &v);
                 fields.insert(k.clone(), type_usage);
             }
-            let mut impls = vec!();
+            let mut impls = vec![];
             for impl_ in result.impls.iter() {
                 let mut functions = HashMap::new();
                 for (name, func) in impl_.functions.iter() {
-                    let type_usage = replace_generic_with_concrete(&self.generic.parameters[i].name, &known_usage.parameters[i], &func.type_usage);
+                    let type_usage =
+                        replace_generic_with_concrete(&self.generic.parameters[i].name, &known_usage.parameters[i], &func.type_usage);
 
-                    functions.insert(name.clone(), TypeConstructor{generic: func.generic.clone(), type_usage: type_usage});
+                    functions.insert(
+                        name.clone(),
+                        TypeConstructor {
+                            generic: func.generic.clone(),
+                            type_usage: type_usage,
+                        },
+                    );
                 }
-                impls.push(EnvImpl{
+                impls.push(EnvImpl {
                     trait_: impl_.trait_.clone(),
                     functions: functions,
                 });
             }
-            result = EnvType{
-                generic: ast::Generic{parameters: vec!()},
+            result = EnvType {
+                generic: ast::Generic { parameters: vec![] },
                 is_a: self.is_a.clone(),
                 fields: fields,
                 impls: impls,
@@ -251,7 +255,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "i8".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -260,7 +264,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "i16".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -269,7 +273,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "i32".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -278,7 +282,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "i64".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -287,7 +291,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "isize".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -297,7 +301,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "u8".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -306,7 +310,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "u16".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -315,7 +319,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "u32".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -324,7 +328,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "u64".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -333,7 +337,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "usize".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -343,7 +347,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "f32".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -352,7 +356,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "f64".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -362,7 +366,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "bool".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -371,7 +375,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "!".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -380,7 +384,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "unit".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -389,7 +393,7 @@ fn create_builtins() -> HashMap<String, NamedEntity> {
     result.insert(
         "String".to_string(),
         NamedEntity::NamedType(EnvType {
-            generic: ast::Generic{parameters: vec!()},
+            generic: ast::Generic { parameters: vec![] },
             is_a: TypeType::Scalar,
             fields: HashMap::new(),
             impls: vec![],
@@ -409,15 +413,15 @@ fn apply_self(type_name: &str, constructor: &TypeConstructor) -> TypeConstructor
             if func.arguments.len() > 0 {
                 match &func.arguments[0] {
                     ast::TypeUsage::Named(named) => {
-                        if type_name == named.name.name.value {
+                        if type_name == named.name.name.value || type_name == "Self" {
                             let result = ast::TypeUsage::Function(ast::FunctionTypeUsage {
                                 arguments: func.arguments[1..func.arguments.len()].iter().map(|arg| arg.clone()).collect(),
                                 return_type: func.return_type.clone(),
                             });
-                            return TypeConstructor{
+                            return TypeConstructor {
                                 generic: constructor.generic.clone(),
                                 type_usage: result,
-                            }
+                            };
                         }
                     }
                     _ => {}
@@ -487,6 +491,7 @@ struct Context {
     pub current_function_return: Option<ast::TypeUsage>,
     pub environment: HashMap<String, NamedEntity>,
     pub id_generator: Rc<ast::IdGenerator>,
+    pub current_self: Option<String>,
 }
 
 impl Context {
@@ -505,28 +510,25 @@ impl Context {
     fn add_generic(&self, generic: &ast::Generic) -> Result<Context> {
         let mut ctx = self.clone();
         for parameter in generic.parameters.iter() {
-            let mut env_type = EnvType{
-                generic: ast::Generic{
-                    parameters: vec!(),
-                },
+            let mut env_type = EnvType {
+                generic: ast::Generic { parameters: vec![] },
                 is_a: TypeType::Trait,
                 fields: HashMap::new(),
-                impls: vec!(),
+                impls: vec![],
             };
             for bound in parameter.bounds.iter() {
                 if !self.environment.contains_key(&bound.name.value) {
-                    return Err(errors::TypingError::TypeDoesNotExist {
-                        identifier: bound.clone(),
-                    });
+                    return Err(errors::TypingError::TypeDoesNotExist { identifier: bound.clone() });
                 }
                 match &self.environment[&bound.name.value] {
                     NamedEntity::NamedType(named_type) => {
                         env_type.impls.push(named_type.impls[0].clone());
-                    },
+                    }
                     _ => {}
                 }
-            };
-            ctx.environment.insert(parameter.name.name.value.clone(), NamedEntity::NamedType(env_type));
+            }
+            ctx.environment
+                .insert(parameter.name.name.value.clone(), NamedEntity::NamedType(env_type));
         }
         return Ok(ctx);
     }
@@ -534,31 +536,26 @@ impl Context {
     fn add_impl(&self, impl_: &ast::Impl, traits: &HashMap<String, ast::TraitTypeDeclaration>) -> Result<Context> {
         let mut functions = HashMap::new();
         for func in impl_.functions.iter() {
-            functions.insert(func.declaration.name.name.value.to_string(), TypeConstructor::from_declaration(&func.declaration));
-        }
-        // fill out defaults
-        match &impl_.trait_ {
-            Some(trait_) => {
-                if !traits.contains_key(&trait_.name.name.value) {
-                    return Err(errors::TypingError::TypeDoesNotExist {
-                        identifier: trait_.name.clone(),
-                    });
-                }
-                for func in traits[&trait_.name.name.value].functions.iter() {
-                    match func {
-                        ast::TraitItem::Function(default_function) => {
-                            if !functions.contains_key(&default_function.declaration.name.name.value) {
-                                functions.insert(
-                                    default_function.declaration.name.name.value.to_string(),
-                                    TypeConstructor::from_declaration(&default_function.declaration),
-                                );
-                            }
-                        }
-                        _ => {}
+            if (func.declaration.arguments.len() == 0) {
+                continue;
+            }
+            match &func.declaration.arguments[0].type_ {
+                ast::TypeUsage::Named(named) => {
+                    if (named.name.name.value != "Self") {
+                        continue;
                     }
                 }
+                _ => {
+                    continue;
+                }
             }
-            None => {}
+            let type_constructor = TypeConstructor::from_declaration(&func.declaration);
+            let resolved_tc = TypeConstructor {
+                generic: type_constructor.generic.clone(),
+                type_usage: type_constructor.type_usage.replace_type(&"Self", &impl_.struct_.name),
+            };
+            // is self function, add to context for this type
+            functions.insert(func.declaration.name.name.value.to_string(), resolved_tc);
         }
         let mut result = self.clone();
         let mut env_named = result.environment[&impl_.struct_.name.name.value].clone();
@@ -641,9 +638,7 @@ fn apply_substitution(ctx: &Context, substitution: &SubstitutionMap, type_: &ast
                 ast::TypeUsage::Unknown(unknown.clone())
             }
         }
-        ast::TypeUsage::Namespace(namespace) => {
-            ast::TypeUsage::Namespace(namespace.clone())
-        }
+        ast::TypeUsage::Namespace(namespace) => ast::TypeUsage::Namespace(namespace.clone()),
         ast::TypeUsage::Function(function) => {
             let mut arguments = vec![];
             for arg in function.arguments.iter() {
@@ -670,7 +665,10 @@ fn compose_substitutions(ctx: &Context, s1: &SubstitutionMap, s2: &SubstitutionM
 fn unify(ctx: &Context, t1: &ast::TypeUsage, t2: &ast::TypeUsage) -> Result<SubstitutionMap> {
     match (t1, t2) {
         (ast::TypeUsage::Named(named1), ast::TypeUsage::Named(named2)) => {
-            if named1.name.name.value == named2.name.name.value {
+            if named1.name.name.value == named2.name.name.value
+                || (named1.name.name.value == "Self" && Some(named2.name.name.value.clone()) == ctx.current_self)
+                || (named2.name.name.value == "Self" && Some(named1.name.name.value.clone()) == ctx.current_self)
+            {
                 let mut result = SubstitutionMap::new();
                 match (&named1.type_parameters, &named2.type_parameters) {
                     (ast::GenericUsage::Known(known1), ast::GenericUsage::Known(known2)) => {
@@ -691,10 +689,10 @@ fn unify(ctx: &Context, t1: &ast::TypeUsage, t2: &ast::TypeUsage) -> Result<Subs
                                 )?,
                             )?;
                         }
-                    },
+                    }
                     _ => {
                         panic!("should never be unknown")
-                    },
+                    }
                 }
                 return Ok(result);
             }
@@ -784,6 +782,7 @@ impl TypeChecker {
             environment: create_builtins(),
             current_function_return: None,
             id_generator: Rc::new(ast::IdGenerator::new("T")),
+            current_self: None,
         };
 
         let mut traits = HashMap::new();
@@ -810,7 +809,7 @@ impl TypeChecker {
                     };
                     ctx.environment.insert(
                         function.declaration.name.name.value.to_string(),
-                        NamedEntity::Function(TypeConstructor{
+                        NamedEntity::Function(TypeConstructor {
                             generic: function.declaration.generic.clone(),
                             type_usage: ast::TypeUsage::Function(function_type),
                         }),
@@ -931,9 +930,6 @@ impl TypeChecker {
             ast::TypeDeclaration::Primitive(primitive) => {
                 return Ok((ast::TypeDeclaration::Primitive(primitive.clone()), SubstitutionMap::new()));
             }
-            ast::TypeDeclaration::Alias(alias) => {
-                return Ok((ast::TypeDeclaration::Alias(alias.clone()), SubstitutionMap::new()));
-            }
             ast::TypeDeclaration::Trait(trait_) => {
                 let (result, subst) = self.with_trait_declaration(ctx, incoming_substitutions, trait_)?;
                 return Ok((ast::TypeDeclaration::Trait(result), subst));
@@ -947,7 +943,11 @@ impl TypeChecker {
         incoming_substitutions: &SubstitutionMap,
         trait_: &ast::TraitTypeDeclaration,
     ) -> Result<(ast::TraitTypeDeclaration, SubstitutionMap)> {
-        let gen_ctx = ctx.add_generic(&trait_.generic)?;
+        let mut gen_ctx = ctx.add_generic(&trait_.generic)?;
+        gen_ctx
+            .environment
+            .insert("Self".to_string(), gen_ctx.environment[&trait_.name.name.value].clone());
+        gen_ctx.current_self = Some(trait_.name.name.value.clone());
         let mut substitutions = incoming_substitutions.clone();
         let mut result_functions = vec![];
         for item in &trait_.functions {
@@ -955,11 +955,6 @@ impl TypeChecker {
                 ast::TraitItem::FunctionDeclaration(declaration) => {
                     let result_declaration = self.with_function_declaration(&gen_ctx, declaration)?;
                     result_functions.push(ast::TraitItem::FunctionDeclaration(result_declaration));
-                }
-                ast::TraitItem::Function(function) => {
-                    let (function_result, susbt) = self.with_function(&gen_ctx, incoming_substitutions, function)?;
-                    substitutions = compose_substitutions(ctx, &substitutions, &susbt)?;
-                    result_functions.push(ast::TraitItem::Function(function_result));
                 }
             }
         }
@@ -996,7 +991,11 @@ impl TypeChecker {
         incoming_substitutions: &SubstitutionMap,
         impl_: &ast::Impl,
     ) -> Result<(ast::Impl, SubstitutionMap)> {
-        let impl_ctx = ctx.add_generic(&impl_.generic)?;
+        let mut impl_ctx = ctx.add_generic(&impl_.generic)?;
+        impl_ctx
+            .environment
+            .insert("Self".to_string(), impl_ctx.environment[&impl_.struct_.name.name.value].clone());
+        impl_ctx.current_self = Some(impl_.struct_.name.name.value.clone());
 
         let mut substitutions = incoming_substitutions.clone();
         type_exists(
@@ -1459,14 +1458,25 @@ impl TypeChecker {
         let mut substitution = substitution.clone();
         match &ctx.environment[&variable_usage.name.name.value] {
             NamedEntity::NamedType(named_type) => {
-                let type_ = ast::TypeUsage::Namespace(ast::NamespaceTypeUsage::Type(ast::NamedTypeUsage{name: variable_usage.name.clone(), type_parameters: variable_usage.type_parameters.clone()}));
+                let type_ = ast::TypeUsage::Namespace(ast::NamespaceTypeUsage::Type(ast::NamedTypeUsage {
+                    name: variable_usage.name.clone(),
+                    type_parameters: variable_usage.type_parameters.clone(),
+                }));
                 substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &variable_usage.type_, &type_)?)?;
             }
             NamedEntity::Variable(variable) => {
                 substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &variable_usage.type_, &variable)?)?;
             }
             NamedEntity::Function(function) => {
-                substitution = compose_substitutions(ctx, &substitution, &unify(ctx, &variable_usage.type_, &function.construct(ctx, &variable_usage.type_parameters)?)?)?;
+                substitution = compose_substitutions(
+                    ctx,
+                    &substitution,
+                    &unify(
+                        ctx,
+                        &variable_usage.type_,
+                        &function.construct(ctx, &variable_usage.type_parameters)?,
+                    )?,
+                )?;
             }
         }
         Ok((

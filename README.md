@@ -43,13 +43,13 @@ This language is under active development, progress will be marked here as the l
   - [x] Basic
   - [ ] Inferred
   - [ ] Higher kinded types
-  - [ ] Variadic generic types
 - [ ] Control Flow
   - [x] If
   - [ ] While
   - [ ] For
 - [ ] IO
 - [ ] Enums
+  - [ ] Errors
 - [ ] Lambdas
 - [ ] Imports
 - [ ] Visibility

@@ -87,12 +87,6 @@ impl Context {
                         NamedEntity::TypeDeclaration(ast::TypeDeclaration::Struct(struct_.clone())),
                     );
                 }
-                ast::ModuleItem::TypeDeclaration(ast::TypeDeclaration::Alias(alias)) => {
-                    ctx.environment.insert(
-                        alias.name.name.value.to_string(),
-                        NamedEntity::TypeDeclaration(ast::TypeDeclaration::Alias(alias.clone())),
-                    );
-                }
                 ast::ModuleItem::Function(function) => {
                     ctx.environment.insert(
                         function.declaration.name.name.value.to_string(),
@@ -418,6 +412,9 @@ impl TreeWalkInterpreter {
                 }
             }
             ast::Subexpression::VariableUsage(variable_usage) => {
+                if !ctx.environment.contains_key(&variable_usage.name.name.value) {
+                    panic!(variable_usage.name.name.value.clone());
+                }
                 let variable_value = match &ctx.environment[&variable_usage.name.name.value] {
                     NamedEntity::Variable(v) => v.clone(),
                     _ => panic!("variable lookup of type"),
@@ -469,7 +466,7 @@ impl TreeWalkInterpreter {
                                                 if method.declaration.arguments.len() > 0 {
                                                     match &method.declaration.arguments[0].type_ {
                                                         ast::TypeUsage::Named(arg_named) => {
-                                                            if arg_named.name.name.value == s.source.name.name.value {
+                                                            if arg_named.name.name.value == "Self" {
                                                                 return ExpressionResult::Value(Value::Function(Function {
                                                                     partial: vec![source.clone()],
                                                                     ref_: FunctionRef::User(method.clone()),

@@ -81,16 +81,17 @@ fn main(): i64 {
 type TestTrait trait {
     fn class_method(id: i64): Self;
     fn instance_method(self: Self): i64;
-    fn default_impl(self: Self): i64 {
-        return self.instance_method();
-    }
+    fn default_impl(self: Self): i64;
 }
 
 impl TestTrait for User {
     fn class_method(id: i64): Self {
-        return User{id: id,};
+        return Self{id: id,};
     }
     fn instance_method(self: Self): i64 {
         return self.get_id();
+    }
+    fn default_impl(self: Self): i64 {
+        return self.instance_method();
     }
 }

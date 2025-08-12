@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, clone};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IdGenerator {
@@ -8,7 +8,10 @@ pub struct IdGenerator {
 
 impl IdGenerator {
     pub fn new(key: &str) -> Self {
-        IdGenerator { id_key: key.to_string(), counter: RefCell::new(0) }
+        IdGenerator {
+            id_key: key.to_string(),
+            counter: RefCell::new(0),
+        }
     }
 
     pub fn next(&self) -> String {
@@ -72,8 +75,7 @@ pub struct UnknownTypeUsage {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NamespaceTypeUsage {
-    Type(NamedTypeUsage)
-    // Module
+    Type(NamedTypeUsage), // Module
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -81,7 +83,7 @@ pub enum TypeUsage {
     Function(FunctionTypeUsage),
     Named(NamedTypeUsage),
     Unknown(UnknownTypeUsage),
-    Namespace(NamespaceTypeUsage)
+    Namespace(NamespaceTypeUsage),
 }
 
 impl TypeUsage {
@@ -113,6 +115,30 @@ impl TypeUsage {
             arguments: (0..arg_count).map(|_| TypeUsage::new_unknown(&id_gen)).collect(),
             return_type: Box::new(TypeUsage::new_unknown(&id_gen)),
         });
+    }
+
+    pub fn replace_type(&self, old: &str, new: &Identifier) -> TypeUsage {
+        return match &self {
+            TypeUsage::Function(function) => {
+                return TypeUsage::Function(FunctionTypeUsage {
+                    arguments: function.arguments.iter().map(|arg| arg.replace_type(old, new)).collect(),
+                    return_type: Box::new(function.return_type.replace_type(old, new)),
+                });
+            }
+            TypeUsage::Named(named) => {
+                let name = if (named.name.name.value == old) {
+                    new.clone()
+                } else {
+                    named.name.clone()
+                };
+                return TypeUsage::Named(NamedTypeUsage {
+                    type_parameters: named.type_parameters.clone(),
+                    name: name,
+                });
+            }
+            TypeUsage::Namespace(namespace) => return TypeUsage::Namespace(namespace.clone()),
+            TypeUsage::Unknown(unkown) => return TypeUsage::Unknown(unkown.clone()),
+        };
     }
 }
 
@@ -347,7 +373,6 @@ pub struct StructTypeDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TraitItem {
     FunctionDeclaration(FunctionDeclaration),
-    Function(Function),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -358,16 +383,9 @@ pub struct TraitTypeDeclaration {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AliasTypeDeclaration {
-    pub name: Identifier,
-    pub replaces: TypeUsage,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeDeclaration {
     Struct(StructTypeDeclaration),
     Primitive(PrimitiveTypeDeclaration),
-    Alias(AliasTypeDeclaration),
     Trait(TraitTypeDeclaration),
 }
 

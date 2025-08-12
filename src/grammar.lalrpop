@@ -281,13 +281,8 @@ pub StructTypeDeclaration: ast::StructTypeDeclaration = {
     }
 };
 
-pub AliasTypeDeclaration: ast::AliasTypeDeclaration = {
-    "type" <i:SpannedIdentifier> "=" <t:TypeUsage> ";" => ast::AliasTypeDeclaration{name: i, replaces: t}
-};
-
 pub TraitItem: ast::TraitItem = {
     <fd:FunctionDeclaration> ";" => ast::TraitItem::FunctionDeclaration(fd),
-    <f:Function> => ast::TraitItem::Function(f),
 };
 
 pub TraitTypeDeclaration: ast::TraitTypeDeclaration = {
@@ -297,7 +292,6 @@ pub TraitTypeDeclaration: ast::TraitTypeDeclaration = {
 
 pub TypeDeclaration: ast::TypeDeclaration = {
     <s:StructTypeDeclaration> => ast::TypeDeclaration::Struct(s),
-    <a:AliasTypeDeclaration> => ast::TypeDeclaration::Alias(a),
     <t:TraitTypeDeclaration> => ast::TypeDeclaration::Trait(t),
 };
 

@@ -3,7 +3,6 @@ mod ast;
 mod errors;
 mod interpreter;
 mod trait_checking;
-mod type_alias_resolution;
 mod type_checking;
 #[macro_use]
 extern crate lalrpop_util;
@@ -19,7 +18,7 @@ fn main() {
     let matches = App::new("Boring Language Compiler")
         .version("0.0.1")
         .author("Andrew Segavac")
-        .about("Compiles boring language files to LLVM IR.")
+        .about("Compiles boringlang files")
         .arg(
             Arg::with_name("OUTPUT")
                 .short("o")
@@ -40,26 +39,18 @@ fn main() {
     let unknown_id_gen = ast::IdGenerator::new("S");
     let module_ast = grammar::ModuleParser::new().parse(&unknown_id_gen, &contents).unwrap(); //TODO: convert to error
                                                                                               // println!("ast: {:#?}", &module_ast);
-    let alias_resolver = type_alias_resolution::TypeAliasResolver {};
-    let resolved_ast = match alias_resolver.with_module(&module_ast) {
-        Ok(r) => r,
-        Err(err) => {
-            println!("type checking error: {:#?}", &err);
-            panic!("bad alias");
-        }
-    };
 
     // println!("resolved ast: {:#?}", &resolved_ast);
     let trait_checker = trait_checking::TraitChecker {};
-    match trait_checker.with_module(&resolved_ast) {
+    match trait_checker.with_module(&module_ast) {
         Ok(_) => {}
         Err(err) => {
-            println!("type checking error: {:#?}", &err);
+            println!("trait checking error: {:#?}", &err);
             return;
         }
     }
     let type_checker = type_checking::TypeChecker {};
-    let type_checking_result = type_checker.with_module(&resolved_ast);
+    let type_checking_result = type_checker.with_module(&module_ast);
     match &type_checking_result {
         Ok((checked_ast, subst)) => {
             println!("checked ast: {:#?}", &checked_ast);

@@ -23,9 +23,7 @@ fn compare_struct_trait(
     match struct_ {
         ast::TypeUsage::Named(named) => match trait_ {
             ast::TypeUsage::Named(trait_named) => {
-                if named.name.name.value == trait_named.name.name.value
-                    || (named.name.name.value == struct_name.name.value && trait_named.name.name.value == trait_name.name.value)
-                {
+                if named.name.name.value == trait_named.name.name.value {
                     return Ok(());
                 }
                 return Err(errors::TypingError::TypeMismatch {
@@ -128,19 +126,6 @@ impl TraitChecker {
                                 });
                             }
                         }
-                        ast::TraitItem::Function(function) => {
-                            // skip found check because it has a default
-                            for impl_function in impl_.functions.iter() {
-                                if impl_function.declaration.name.name.value == function.declaration.name.name.value {
-                                    compare_struct_trait(
-                                        &impl_function.declaration.to_type(),
-                                        &function.declaration.to_type(),
-                                        &impl_.struct_.name,
-                                        &trait_.name,
-                                    )?;
-                                }
-                            }
-                        }
                     }
                 }
                 // assert all functions are in trait
@@ -148,13 +133,13 @@ impl TraitChecker {
                     let mut found = false;
                     for trait_item in trait_declaration.functions.iter() {
                         let declaration = match trait_item {
-                            ast::TraitItem::Function(function) => &function.declaration,
-                            ast::TraitItem::FunctionDeclaration(declaration) => &declaration,
+                            ast::TraitItem::FunctionDeclaration(declaration) => {
+                                if impl_function.declaration.name.name.value == declaration.name.name.value {
+                                    found = true;
+                                    break;
+                                }
+                            }
                         };
-                        if impl_function.declaration.name.name.value == declaration.name.name.value {
-                            found = true;
-                            break;
-                        }
                     }
                     if found == false {
                         return Err(errors::TypingError::FunctionNotInTrait {
