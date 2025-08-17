@@ -1,0 +1,26 @@
+{
+  "name": "boringlang",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The Boring programming language CLI",
+  "author": "Andrew Segavac",
+  "homepage": "https://code.buildbetter.boats/asegavac/boringlang",
+  "repository": {
+    "type": "git",
+    "url": "ssh://gitea@code.buildbetter.boats:2282/asegavac/boringlang.git"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build ./src/index.ts --outfile dist/boringlang --compile",
+    "test": "bun test",
+    "type-check": "tsc --noEmit",
+  },
+  "dependencies": {
+    "@bunli/core": "latest",
+  },
+  "devDependencies": {
+    "@bunli/test": "latest",
+    "@types/bun": "latest",
+    "bunli": "latest"
+  }
+}

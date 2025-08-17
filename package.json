@@ -1,0 +1,31 @@
+{
+  "name": "boringlang",
+  "description": "The Boring programming language",
+  "private": true,
+  "author": "Andrew Segavac",
+  "homepage": "https://code.buildbetter.boats/asegavac/boringlang",
+  "repository": {
+    "type": "git",
+    "url": "ssh://gitea@code.buildbetter.boats:2282/asegavac/boringlang.git"
+  },
+  "scripts": {
+    "build": "bun run --filter 'boringlang' build",
+    "format": "bun run prettier **/*.ts",
+    "type-check": "bun run tsc --noEmit",
+    "check": "bun run format -- --check && bun run type-check"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "jiti": "^2.5.1",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-language-server": "^4.4.0",
+    "vscode-langservers-extracted": "^4.10.0"
+  },
+  "workspaces": ["packages/*"],
+  "dependencies": {
+    "ohm-js": "^17.2.1"
+  }
+}
