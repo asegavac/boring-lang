@@ -536,12 +536,12 @@ impl Context {
     fn add_impl(&self, impl_: &ast::Impl, traits: &HashMap<String, ast::TraitTypeDeclaration>) -> Result<Context> {
         let mut functions = HashMap::new();
         for func in impl_.functions.iter() {
-            if (func.declaration.arguments.len() == 0) {
+            if func.declaration.arguments.len() == 0 {
                 continue;
             }
             match &func.declaration.arguments[0].type_ {
                 ast::TypeUsage::Named(named) => {
-                    if (named.name.name.value != "Self") {
+                    if named.name.name.value != "Self" {
                         continue;
                     }
                 }

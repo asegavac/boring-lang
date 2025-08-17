@@ -132,7 +132,7 @@ impl TraitChecker {
                 for impl_function in impl_.functions.iter() {
                     let mut found = false;
                     for trait_item in trait_declaration.functions.iter() {
-                        let declaration = match trait_item {
+                        match trait_item {
                             ast::TraitItem::FunctionDeclaration(declaration) => {
                                 if impl_function.declaration.name.name.value == declaration.name.name.value {
                                     found = true;

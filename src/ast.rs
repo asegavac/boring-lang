@@ -1,4 +1,4 @@
-use std::{cell::RefCell, clone};
+use std::cell::RefCell;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IdGenerator {
@@ -118,7 +118,7 @@ impl TypeUsage {
     }
 
     pub fn replace_type(&self, old: &str, new: &Identifier) -> TypeUsage {
-        return match &self {
+        match &self {
             TypeUsage::Function(function) => {
                 return TypeUsage::Function(FunctionTypeUsage {
                     arguments: function.arguments.iter().map(|arg| arg.replace_type(old, new)).collect(),
@@ -126,7 +126,7 @@ impl TypeUsage {
                 });
             }
             TypeUsage::Named(named) => {
-                let name = if (named.name.name.value == old) {
+                let name = if named.name.name.value == old {
                     new.clone()
                 } else {
                     named.name.clone()
@@ -138,7 +138,7 @@ impl TypeUsage {
             }
             TypeUsage::Namespace(namespace) => return TypeUsage::Namespace(namespace.clone()),
             TypeUsage::Unknown(unkown) => return TypeUsage::Unknown(unkown.clone()),
-        };
+        }
     }
 }
 

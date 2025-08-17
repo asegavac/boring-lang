@@ -413,7 +413,7 @@ impl TreeWalkInterpreter {
             }
             ast::Subexpression::VariableUsage(variable_usage) => {
                 if !ctx.environment.contains_key(&variable_usage.name.name.value) {
-                    panic!(variable_usage.name.name.value.clone());
+                    panic!("{}", variable_usage.name.name.value.clone());
                 }
                 let variable_value = match &ctx.environment[&variable_usage.name.name.value] {
                     NamedEntity::Variable(v) => v.clone(),

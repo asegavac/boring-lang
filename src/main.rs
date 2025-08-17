@@ -32,9 +32,6 @@ fn main() {
         .get_matches();
     let input = matches.value_of("INPUT").unwrap();
 
-    let default_output = input.rsplitn(2, ".").collect::<Vec<&str>>().last().unwrap().clone();
-    let _output = matches.value_of("OUTPUT").unwrap_or(default_output);
-
     let contents = fs::read_to_string(input).expect("input file not found");
     let unknown_id_gen = ast::IdGenerator::new("S");
     let module_ast = grammar::ModuleParser::new().parse(&unknown_id_gen, &contents).unwrap(); //TODO: convert to error
