@@ -1,5 +1,9 @@
-
-
 fn main(): String {
-    return "foo";
+  let a = 2;
+  a;
+  a = 3;
+  a = if(true) {"asdf"} else {"fdsa"};
+  a.b.c.d();
+  a = (b + c.d()); // comment
+  return a.b() ;
 }
